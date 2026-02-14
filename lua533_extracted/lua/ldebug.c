@@ -158,7 +158,7 @@ static const char *findlocal (lua_State *L, CallInfo *ci, int n,
   if (name == NULL) {  /* no 'standard' name? */
     StkId limit = (ci == L->ci) ? L->top : ci->next->func;
     if (limit - base >= n && n > 0)  /* is 'n' inside 'ci' stack? */
-      name = "(*temporary)";  /* generic name for any valid slot */
+      name = "(*临时变量)";  /* generic name for any valid slot */
     else
       return NULL;  /* no name */
   }
@@ -555,9 +555,19 @@ static const char *varinfo (lua_State *L, const TValue *o) {
   const char *kind = NULL;
   if (isLua(ci)) {
     kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
-    if (!kind && isinstack(ci, o))  /* no? try a register */
+    if (kind) kind = "上值";
+    if (!kind && isinstack(ci, o)) {  /* no? try a register */
       kind = getobjname(ci_func(ci)->p, currentpc(ci),
                         cast_int(o - ci->u.l.base), &name);
+      if (kind) {
+          if (strcmp(kind, "local") == 0) kind = "局部变量";
+          else if (strcmp(kind, "global") == 0) kind = "全局变量";
+          else if (strcmp(kind, "field") == 0) kind = "字段";
+          else if (strcmp(kind, "upvalue") == 0) kind = "上值";
+          else if (strcmp(kind, "method") == 0) kind = "方法";
+          else if (strcmp(kind, "constant") == 0) kind = "常量";
+      }
+    }
   }
   return (kind) ? luaO_pushfstring(L, " (%s '%s')", kind, name) : "";
 }
@@ -565,13 +575,13 @@ static const char *varinfo (lua_State *L, const TValue *o) {
 
 l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
   const char *t = luaT_objtypename(L, o);
-  luaG_runerror(L, "attempt to %s a %s value%s", op, t, varinfo(L, o));
+  luaG_runerror(L, "尝试对一个 %s 值进行 %s%s", t, op, varinfo(L, o));
 }
 
 
 l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
   if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
-  luaG_typeerror(L, p1, "concatenate");
+  luaG_typeerror(L, p1, "连接");
 }
 
 
@@ -591,7 +601,7 @@ l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!tointeger(p1, &temp))
     p2 = p1;
-  luaG_runerror(L, "number%s has no integer representation", varinfo(L, p2));
+  luaG_runerror(L, "数字%s 没有整数表示", varinfo(L, p2));
 }
 
 
@@ -599,9 +609,9 @@ l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
   const char *t1 = luaT_objtypename(L, p1);
   const char *t2 = luaT_objtypename(L, p2);
   if (strcmp(t1, t2) == 0)
-    luaG_runerror(L, "attempt to compare two %s values", t1);
+    luaG_runerror(L, "尝试比较两个 %s 值", t1);
   else
-    luaG_runerror(L, "attempt to compare %s with %s", t1, t2);
+    luaG_runerror(L, "尝试比较 %s 和 %s", t1, t2);
 }
 
 

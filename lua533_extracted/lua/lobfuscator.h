@@ -11,6 +11,8 @@
 #define LUA_INST_KEY  0xAB8271C3U
 #define LUA_OP_XOR    0x1DU
 #define LUA_CONST_XOR 0x8F
+#define LUA_SBX_XOR   0x12345
+#define LUA_AX_XOR    0x1ABCDEF
 
 #define ENCRYPT_INST(i) ((i) ^ LUA_INST_KEY)
 #define DECRYPT_INST(i) ((i) ^ LUA_INST_KEY)

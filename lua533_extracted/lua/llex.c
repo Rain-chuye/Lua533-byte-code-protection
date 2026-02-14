@@ -43,9 +43,9 @@ static const char *const luaX_tokens [] = {
     "in", "lambda", "local", "nil", "not", "or", "repeat",
     "return", "switch", "then", "true", "until", "when", "while",
     "//", "..", "...", "==", ">=", "<=", "~=",
-    "<<", ">>", "::", "<eof>",
+    "<<", ">>", "::", "<文件结束>",
     "->", "=>",
-    "<number>", "<integer>", "<name>", "<string>"
+    "<数字>", "<整数>", "<名称>", "<字符串>"
 };
 
 
@@ -60,7 +60,7 @@ static void save (LexState *ls, int c) {
   if (luaZ_bufflen(b) + 1 > luaZ_sizebuffer(b)) {
     size_t newsize;
     if (luaZ_sizebuffer(b) >= MAX_SIZE/2)
-      lexerror(ls, "lexical element too long", 0);
+      lexerror(ls, "词法元素过长", 0);
     newsize = luaZ_sizebuffer(b) * 2;
     luaZ_resizebuffer(ls->L, b, newsize);
   }
@@ -110,7 +110,7 @@ static const char *txtToken (LexState *ls, int token) {
 static l_noret lexerror (LexState *ls, const char *msg, int token) {
   msg = luaG_addinfo(ls->L, msg, ls->source, ls->linenumber);
   if (token)
-    luaO_pushfstring(ls->L, "%s near %s", msg, txtToken(ls, token));
+    luaO_pushfstring(ls->L, "%s (在 %s 附近)", msg, txtToken(ls, token));
   luaD_throw(ls->L, LUA_ERRSYNTAX);
 }
 
@@ -156,7 +156,7 @@ static void inclinenumber (LexState *ls) {
   if (currIsNewline(ls) && ls->current != old)
     next(ls);  /* skip '\n\r' or '\r\n' */
   if (++ls->linenumber >= MAX_INT)
-    lexerror(ls, "chunk has too many lines", 0);
+    lexerror(ls, "代码块行数过多", 0);
 }
 
 
@@ -231,7 +231,7 @@ static int read_numeral (LexState *ls, SemInfo *seminfo) {
   }
   save(ls, '\0');
   if (luaO_str2num(luaZ_buffer(ls->buff), &obj) == 0)  /* format error? */
-    lexerror(ls, "malformed number", TK_FLT);
+    lexerror(ls, "数字格式错误", TK_FLT);
   if (ttisinteger(&obj)) {
     seminfo->i = ivalue(&obj);
     return TK_INT;
@@ -270,9 +270,9 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, int sep) {
   for (;;) {
     switch (ls->current) {
       case EOZ: {  /* error */
-        const char *what = (seminfo ? "string" : "comment");
+        const char *what = (seminfo ? "字符串" : "注释");
         const char *msg = luaO_pushfstring(ls->L,
-                     "unfinished long %s (starting at line %d)", what, line);
+                     "未完成的长%s (始于第 %d 行)", what, line);
         lexerror(ls, msg, TK_EOS);
         break;  /* to avoid warnings */
       }
@@ -313,12 +313,12 @@ static void esccheck (LexState *ls, int c, const char *msg) {
 
 static int gethexa (LexState *ls) {
   save_and_next(ls);
-  esccheck (ls, lisxdigit(ls->current), "hexadecimal digit expected");
+  esccheck (ls, lisxdigit(ls->current), "缺少十六进制数字");
   return luaO_hexavalue(ls->current);
 }
 
 static int gethexa2 (LexState *ls) {
-    esccheck (ls, lisxdigit(ls->current), "hexadecimal digit expected");
+    esccheck (ls, lisxdigit(ls->current), "缺少十六进制数字");
     return luaO_hexavalue(ls->current);
 }
 
@@ -346,7 +346,7 @@ static unsigned long readutf8esc (LexState *ls) {
 //---
   while ((save_and_next(ls), lisxdigit(ls->current))) {
     i++;
-    esccheck(ls, r <= (0x7FFFFFFFu >> 4), "UTF-8 value too large");
+    esccheck(ls, r <= (0x7FFFFFFFu >> 4), "UTF-8 值过大");
     r = (r << 4) + luaO_hexavalue(ls->current);
 //mod by nirenr
     if(!m&&i==8){
@@ -359,7 +359,7 @@ static unsigned long readutf8esc (LexState *ls) {
   //next(ls);  /* skip '}' */
   //mod by nirenr
   if(m){
-    esccheck(ls, ls->current == '}', "missing '}'");
+    esccheck(ls, ls->current == '}', "缺少 '}'");
     next(ls);  /* skip '}' */
   }
   luaZ_buffremove(ls->buff, i);  /* remove saved chars from buffer */
@@ -381,7 +381,7 @@ static int readdecesc (LexState *ls) {
     r = 10*r + ls->current - '0';
     save_and_next(ls);
   }
-  esccheck(ls, r <= UCHAR_MAX, "decimal escape too large");
+  esccheck(ls, r <= UCHAR_MAX, "十进制转义字符过大");
   luaZ_buffremove(ls->buff, i);  /* remove read digits from buffer */
   return r;
 }
@@ -392,11 +392,11 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
   while (ls->current != del) {
     switch (ls->current) {
       case EOZ:
-        lexerror(ls, "unfinished string", TK_EOS);
+        lexerror(ls, "未完成的字符串", TK_EOS);
         break;  /* to avoid warnings */
       case '\n':
       case '\r':
-        lexerror(ls, "unfinished string", TK_STRING);
+        lexerror(ls, "未完成的字符串", TK_STRING);
         break;  /* to avoid warnings */
       case '\\': {  /* escape sequences */
         int c;  /* final character to be saved */
@@ -426,7 +426,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
             goto no_save;
           }
           default: {
-            esccheck(ls, lisdigit(ls->current), "invalid escape sequence");
+            esccheck(ls, lisdigit(ls->current), "无效的转义序列");
             c = readdecesc(ls);  /* digital escape '\ddd' */
             goto only_save;
           }
@@ -489,7 +489,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           return TK_STRING;
         }
         else if (sep != -1)  /* '[=...' missing second bracket */
-          lexerror(ls, "invalid long string delimiter", TK_STRING);
+          lexerror(ls, "无效的长字符串定界符", TK_STRING);
         return '[';
       }
       case '=': {

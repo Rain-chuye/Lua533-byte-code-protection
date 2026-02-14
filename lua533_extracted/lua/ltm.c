@@ -24,13 +24,13 @@
 #include "lvm.h"
 
 
-static const char udatatypename[] = "userdata";
+static const char udatatypename[] = "用户数据";
 
 LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTAGS] = {
-  "no value",
-  "nil", "boolean", udatatypename, "number",
-  "string", "table", "function", udatatypename, "thread",
-  "proto" /* this last case is used for tests only */
+  "无值",
+  "nil", "布尔(boolean)", udatatypename, "数字(number)",
+  "字符串(string)", "表(table)", "函数(function)", udatatypename, "线程(thread)",
+  "原型" /* this last case is used for tests only */
 };
 
 
@@ -145,11 +145,11 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
         if (tonumber(p1, &dummy) && tonumber(p2, &dummy))
           luaG_tointerror(L, p1, p2);
         else
-          luaG_opinterror(L, p1, p2, "perform bitwise operation on");
+          luaG_opinterror(L, p1, p2, "位运算");
       }
       /* calls never return, but to avoid warnings: *//* FALLTHROUGH */
       default:
-        luaG_opinterror(L, p1, p2, "perform arithmetic on");
+        luaG_opinterror(L, p1, p2, "算术运算");
     }
   }
 }

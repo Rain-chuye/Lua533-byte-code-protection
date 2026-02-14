@@ -6,8 +6,35 @@
 #include "lstate.h"
 #include "lstring.h"
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
+
+static void inject_emoji_constants(lua_State *L, Proto *f) {
+    const char* emojis[] = {
+        "\xf0\x9f\xa7\xaa", // 🧪
+        "\xf0\x9f\x94\x90", // 🔐
+        "\xf0\x9f\x9a\x80", // 🚀
+        "\xf0\x9f\x92\x8e", // 💎
+        "\xf0\x9f\x8d\x8e", // 🍎
+        "\xf0\x9f\x90\xb1", // 🐱
+        "\xf0\x9f\x8c\x88", // 🌈
+        "\xf0\x9f\x8c\x99", // 🌙
+        "\xf0\x9f\x94\xa5", // 🔥
+        "\xf0\x9f\x91\xbd"  // 👽
+    };
+    int num_emojis = sizeof(emojis) / sizeof(emojis[0]);
+    int to_add = 3;
+    int old_sizek = f->sizek;
+    f->k = luaM_reallocvector(L, f->k, old_sizek, old_sizek + to_add, TValue);
+    for (int i = 0; i < to_add; i++) {
+        TString *ts = luaS_new(L, emojis[rand() % num_emojis]);
+        setnilvalue(&f->k[old_sizek + i]); // Initialize
+        setsvalue2n(L, &f->k[old_sizek + i], ts);
+    }
+    f->sizek += to_add;
+}
 
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
     if (f->sizecode == 0) return;
@@ -84,6 +111,11 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
 
 void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     if (f->obfuscated) return;
+
+    static int seeded = 0;
+    if (!seeded) { srand(time(NULL)); seeded = 1; }
+
+    inject_emoji_constants(L, f);
 
     // Increase stack size to provide slots for dynamic decryption (RK values)
     if (f->maxstacksize <= 253) f->maxstacksize += 2;

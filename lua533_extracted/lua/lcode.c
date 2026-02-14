@@ -672,7 +672,7 @@ static int need_value (FuncState *fs, int list) {
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
-static void exp2reg (FuncState *fs, expdesc *e, int reg) {
+void luaK_exp2reg (FuncState *fs, expdesc *e, int reg) {
   discharge2reg(fs, e, reg);
   if (e->k == VJMP)  /* expression itself is a test? */
     luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
@@ -704,7 +704,7 @@ void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
   luaK_dischargevars(fs, e);
   freeexp(fs, e);
   luaK_reserveregs(fs, 1);
-  exp2reg(fs, e, fs->freereg - 1);
+  luaK_exp2reg(fs, e, fs->freereg - 1);
 }
 
 
@@ -718,7 +718,7 @@ int luaK_exp2anyreg (FuncState *fs, expdesc *e) {
     if (!hasjumps(e))  /* no jumps? */
       return e->u.info;  /* result is already in a register */
     if (e->u.info >= fs->nactvar) {  /* reg. is not a local? */
-      exp2reg(fs, e, e->u.info);  /* put final result in it */
+      luaK_exp2reg(fs, e, e->u.info);  /* put final result in it */
       return e->u.info;
     }
   }
@@ -783,7 +783,7 @@ void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
   switch (var->k) {
     case VLOCAL: {
       freeexp(fs, ex);
-      exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
+      luaK_exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
       return;
     }
     case VUPVAL: {

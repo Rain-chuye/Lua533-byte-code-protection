@@ -168,7 +168,7 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
       lua_assert(!ttistable(t));
       tm = luaT_gettmbyobj(L, t, TM_INDEX);
       if (ttisnil(tm))
-        luaG_typeerror(L, t, "index");  /* no metamethod */
+        luaG_typeerror(L, t, "索引");  /* no metamethod */
       /* else will try the metamethod */
     }
     else {  /* 't' is a table */
@@ -191,7 +191,7 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
     }
     /* else repeat (tail call 'luaV_finishget') */
   }
-  luaG_runerror(L, "'__index' chain too long; possible loop");
+  luaG_runerror(L, "'__index' 链过长；可能存在循环");
 }
 
 
@@ -224,7 +224,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     }
     else {  /* not a table; check metamethod */
       if (ttisnil(tm = luaT_gettmbyobj(L, t, TM_NEWINDEX)))
-        luaG_typeerror(L, t, "index");
+        luaG_typeerror(L, t, "索引");
     }
     /* try the metamethod */
     if (ttisfunction(tm)) {
@@ -236,7 +236,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       return;  /* done */
     /* else loop */
   }
-  luaG_runerror(L, "'__newindex' chain too long; possible loop");
+  luaG_runerror(L, "'__newindex' 链过长；可能存在循环");
 }
 
 
@@ -493,7 +493,7 @@ void luaV_concat (lua_State *L, int total) {
       for (n = 1; n < total && tostring(L, top - n - 1); n++) {
         size_t l = vslen(top - n - 1);
         if (l >= (MAX_SIZE/sizeof(char)) - tl)
-          luaG_runerror(L, "string length overflow");
+          luaG_runerror(L, "字符串长度溢出");
         tl += l;
       }
       if (tl <= LUAI_MAXSHORTLEN) {  /* is result a short string? */
@@ -537,7 +537,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
     default: {  /* try metamethod */
       tm = luaT_gettmbyobj(L, rb, TM_LEN);
       if (ttisnil(tm))  /* no metamethod? */
-        luaG_typeerror(L, rb, "get length of");
+        luaG_typeerror(L, rb, "获取长度");
       break;
     }
   }
@@ -554,7 +554,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
 lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
-      luaG_runerror(L, "attempt to divide by zero");
+      luaG_runerror(L, "尝试除以零");
     return intop(-, 0, m);   /* n==-1; avoid overflow with 0x80000...//-1 */
   }
   else {
@@ -574,7 +574,7 @@ lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
 lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
-      luaG_runerror(L, "attempt to perform 'n%%0'");
+      luaG_runerror(L, "尝试对零取模");
     return 0;   /* m % -1 == 0; avoid overflow with 0x80000...%-1 */
   }
   else {
@@ -783,9 +783,22 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
   lua_assert(base <= L->top && L->top < L->stack + L->stacksize); \
 }
 
+#if defined(__GNUC__)
+#define LUA_USE_COMPUTED_GOTOS
+#endif
+
+#ifdef LUA_USE_COMPUTED_GOTOS
+#define vmdispatch(o)	goto *dispatch_table[o]
+#define vmcase(l)	L_##l:
+#define vmbreak \
+    if (vpc && vcount > 0) { i = *vpc++; vcount--; ra = RA(i); } \
+    else { vpc = NULL; vmfetch(); } \
+    vmdispatch(GET_OPCODE(i));
+#else
 #define vmdispatch(o)	switch(o)
 #define vmcase(l)	case l:
 #define vmbreak		break
+#endif
 
 
 /*
@@ -821,12 +834,32 @@ static int luaB_next (lua_State *L) {
 }
 
 void luaV_execute (lua_State *L) {
+#ifdef LUA_USE_COMPUTED_GOTOS
+  static void *dispatch_table[] = {
+    &&L_OP_MOVE, &&L_OP_LOADK, &&L_OP_LOADKX, &&L_OP_LOADBOOL,
+    &&L_OP_LOADNIL, &&L_OP_GETUPVAL, &&L_OP_GETTABUP, &&L_OP_GETTABLE,
+    &&L_OP_SETTABUP, &&L_OP_SETUPVAL, &&L_OP_SETTABLE, &&L_OP_NEWTABLE,
+    &&L_OP_SELF, &&L_OP_ADD, &&L_OP_SUB, &&L_OP_MUL,
+    &&L_OP_MOD, &&L_OP_POW, &&L_OP_DIV, &&L_OP_IDIV,
+    &&L_OP_BAND, &&L_OP_BOR, &&L_OP_BXOR, &&L_OP_SHL,
+    &&L_OP_SHR, &&L_OP_UNM, &&L_OP_BNOT, &&L_OP_NOT,
+    &&L_OP_LEN, &&L_OP_CONCAT, &&L_OP_JMP, &&L_OP_EQ,
+    &&L_OP_LT, &&L_OP_LE, &&L_OP_TEST, &&L_OP_TESTSET,
+    &&L_OP_CALL, &&L_OP_TAILCALL, &&L_OP_RETURN, &&L_OP_FORLOOP,
+    &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST,
+    &&L_OP_CLOSURE, &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC,
+    &&L_OP_NEWARRAY, &&L_OP_TFOREACH, &&L_OP_VIRTUAL
+  };
+#endif
   CallInfo *ci = L->ci;
   LClosure *cl;
   TValue *k;
   StkId base;
   Instruction *vpc = NULL;
   int vcount = 0;
+  Instruction i;
+  StkId ra;
+
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
   newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
@@ -834,10 +867,16 @@ void luaV_execute (lua_State *L) {
   k = cl->p->k;  /* local reference to function's constant table */
   base = ci->u.l.base;  /* local copy of function's base */
   vpc = NULL; vcount = 0;
+
   /* main loop of interpreter */
+#ifdef LUA_USE_COMPUTED_GOTOS
+  vmbreak;
+#endif
+
   for (;;) {
-    Instruction i;
-    StkId ra;
+    // With computed gotos, the loop is implicitly handled by vmbreak jumping to labels
+    // With switch, we need the switch block.
+#ifndef LUA_USE_COMPUTED_GOTOS
     if (vpc && vcount > 0) {
       i = *vpc++;
       vcount--;
@@ -847,6 +886,7 @@ void luaV_execute (lua_State *L) {
       vmfetch();
     }
     vmdispatch (GET_OPCODE(i)) {
+#endif
       vmcase(OP_MOVE) {
         setobjs2s(L, ra, RB(i));
         vmbreak;
@@ -903,13 +943,13 @@ void luaV_execute (lua_State *L) {
             switch (t->type) {
                 case 1:
                     if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
+                        luaG_runerror(L, "数组键必须是整数");
                     break;
                 case 2:
-                    luaG_runerror(L, "const table cannot be set");
+                    luaG_runerror(L, "常量表不可设置");
                     break;
                 case 3:
-                    luaG_runerror(L, "array key must be a integer");
+                    luaG_runerror(L, "数组键必须是整数");
                     break;
             }
         }
@@ -930,13 +970,13 @@ void luaV_execute (lua_State *L) {
             switch (t->type) {
                 case 1:
                     if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
+                        luaG_runerror(L, "数组键必须是整数");
                     break;
                 case 2:
-                    luaG_runerror(L, "const table cannot be set");
+                    luaG_runerror(L, "常量表不可设置");
                     break;
                 case 3:
-                    luaG_runerror(L, "array key must be a integer");
+                    luaG_runerror(L, "数组键必须是整数");
                     break;
             }
         }
@@ -1317,13 +1357,13 @@ void luaV_execute (lua_State *L) {
         else {  /* try making all values floats */
           lua_Number ninit; lua_Number nlimit; lua_Number nstep;
           if (!tonumber(plimit, &nlimit))
-            luaG_runerror(L, "'for' limit must be a number");
+            luaG_runerror(L, "'for' 循环限制必须是数字");
           setfltvalue(plimit, nlimit);
           if (!tonumber(pstep, &nstep))
-            luaG_runerror(L, "'for' step must be a number");
+            luaG_runerror(L, "'for' 循环步长必须是数字");
           setfltvalue(pstep, nstep);
           if (!tonumber(init, &ninit))
-            luaG_runerror(L, "'for' initial value must be a number");
+            luaG_runerror(L, "'for' 循环初始值必须是数字");
           setfltvalue(init, luai_numsub(L, ninit, nstep));
         }
         ci->u.l.savedpc += GETARG_sBx(i);
@@ -1433,7 +1473,9 @@ void luaV_execute (lua_State *L) {
         up->tt = LUA_TUPVALTBC;  /* mark it to be closed */
         vmbreak;
       }
+#ifndef LUA_USE_COMPUTED_GOTOS
     }
+#endif
   }
 }
 

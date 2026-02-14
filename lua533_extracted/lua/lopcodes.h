@@ -107,11 +107,11 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #define GETARG_Bx(i)	getarg(DECRYPT_INST(i), POS_Bx, SIZE_Bx)
 #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
 
-#define GETARG_Ax(i)	getarg(DECRYPT_INST(i), POS_Ax, SIZE_Ax)
-#define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
+#define GETARG_Ax(i)	(getarg(DECRYPT_INST(i), POS_Ax, SIZE_Ax) ^ ((GET_OPCODE(i) == OP_VIRTUAL) ? LUA_AX_XOR : 0))
+#define SETARG_Ax(i,v)	setarg(i, (v) ^ ((GET_OPCODE(i) == OP_VIRTUAL) ? LUA_AX_XOR : 0), POS_Ax, SIZE_Ax)
 
-#define GETARG_sBx(i)	(GETARG_Bx(i)-MAXARG_sBx)
-#define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
+#define GETARG_sBx(i)	(cast(int, getarg(DECRYPT_INST(i), POS_Bx, SIZE_Bx) ^ LUA_SBX_XOR) - MAXARG_sBx)
+#define SETARG_sBx(i,b)	setarg(i, (cast(unsigned int, (b)+MAXARG_sBx) ^ LUA_SBX_XOR), POS_Bx, SIZE_Bx)
 
 
 #define CREATE_ABC(o,a,b,c)	ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
@@ -121,10 +121,10 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 
 #define CREATE_ABx(o,a,bc)	ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
-			| (cast(Instruction, bc)<<POS_Bx)))
+			| (cast(Instruction, (bc) ^ ((getOpMode(o) == iAsBx) ? LUA_SBX_XOR : 0))<<POS_Bx)))
 
 #define CREATE_Ax(o,a)		ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
-			| (cast(Instruction, a)<<POS_Ax)))
+			| (cast(Instruction, (a) ^ ((o == OP_VIRTUAL) ? LUA_AX_XOR : 0))<<POS_Ax)))
 
 
 /*
