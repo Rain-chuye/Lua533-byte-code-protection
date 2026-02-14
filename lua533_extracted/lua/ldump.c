@@ -89,6 +89,7 @@ static void DumpString (const TString *s, DumpState *D) {
     for (i = 0; i < size - 1; i++) {
         DumpByte((lu_byte)(str[i] ^ LUA_CONST_XOR), D);
     }
+    DumpByte((lu_byte)LUA_CONST_XOR, D); // XORed null terminator
   }
 }
 
