@@ -7,10 +7,13 @@
 #include "lstring.h"
 #include <string.h>
 
+#define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
+
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
     if (f->sizecode == 0) return;
 
     int old_sizecode = f->sizecode;
+
     lu_byte *is_target = luaM_newvector(L, old_sizecode, lu_byte);
     memset(is_target, 0, old_sizecode);
 
@@ -42,9 +45,9 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             Instruction inst = f->code[i];
             OpCode op = GET_OPCODE(inst);
 
-            int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADBOOL ||
-                           op == OP_LOADNIL || op == OP_GETUPVAL || op == OP_SETUPVAL ||
-                           op == OP_NEWTABLE || op == OP_NEWARRAY);
+            // Strictly safe instructions that never yield or skip instructions
+            int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADNIL ||
+                           op == OP_GETUPVAL || op == OP_SETUPVAL);
 
             if (!is_safe) break;
             if (i > start && is_target[i]) break;
@@ -54,7 +57,7 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             if (count >= 255) break;
         }
 
-        if (count > 1) {
+        if (count > 1 && vcode_ptr < (1 << 26)) {
             int vindex = vcode_ptr;
             temp_vcode[vcode_ptr++] = (Instruction)count;
             for (int j = 0; j < count; j++) {
@@ -81,6 +84,10 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
 
 void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     if (f->obfuscated) return;
+
+    // Increase stack size to provide slots for dynamic decryption (RK values)
+    if (f->maxstacksize <= 253) f->maxstacksize += 2;
+    else f->maxstacksize = 255;
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {

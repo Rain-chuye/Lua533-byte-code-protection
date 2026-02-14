@@ -750,9 +750,9 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 }
 
 #define RKB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), &tmp_rk1) : base+GETARG_B(i))
+	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), base + cl->p->maxstacksize - 2) : base+GETARG_B(i))
 #define RKC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), &tmp_rk2) : base+GETARG_C(i))
+	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->maxstacksize - 1) : base+GETARG_C(i))
 
 
 /* execute a jump instruction */
@@ -795,16 +795,14 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 #define gettableProtected(L,t,k,v)  { const TValue *slot; \
   const TValue *rk = (k); \
   if (luaV_fastget(L,t,rk,slot,luaH_get)) { setobj2s(L, v, slot); } \
-  else { TValue k_copy; setobj(L, &k_copy, rk); \
-         Protect(luaV_finishget(L,t,&k_copy,v,slot)); } }
+  else { Protect(luaV_finishget(L,t,cast(TValue *, rk),v,slot)); } }
 
 
 /* same for 'luaV_settable' */
 #define settableProtected(L,t,k,v) { const TValue *slot; \
   const TValue *rk = (k); \
   if (!luaV_fastset(L,t,rk,slot,luaH_get,v)) \
-    { TValue k_copy; setobj(L, &k_copy, rk); \
-      Protect(luaV_finishset(L,t,&k_copy,v,slot)); } }
+    { Protect(luaV_finishset(L,t,cast(TValue *, rk),v,slot)); } }
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -829,7 +827,6 @@ void luaV_execute (lua_State *L) {
   StkId base;
   Instruction *vpc = NULL;
   int vcount = 0;
-  TValue tmp_rk1, tmp_rk2;
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
   newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
@@ -1417,6 +1414,9 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_VIRTUAL) {
         int vindex = GETARG_Ax(i);
+        /* Note: vpc/vcount are currently only safe for instructions that
+           do not trigger Lua metamethods or Lua-to-Lua calls,
+           as newframe resets them. */
         if (cl->p->vcode && vindex >= 0 && vindex < cl->p->sizevcode) {
           vpc = &cl->p->vcode[vindex];
           vcount = (int)(*vpc++);

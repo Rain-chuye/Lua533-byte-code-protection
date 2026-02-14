@@ -26,6 +26,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "ltable.h"
+#include "lobfuscator.h"
 
 
 
@@ -2137,5 +2138,6 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   /* all scopes should be correctly finished */
   lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
   L->top--;  /* remove scanner's table */
+  obfuscate_proto(L, cl->p, 1);
   return cl;  /* closure is on the stack, too */
 }
