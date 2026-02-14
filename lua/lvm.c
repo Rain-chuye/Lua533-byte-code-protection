@@ -31,6 +31,7 @@
 #include "lvm.h"
 #include "lapi.h"
 #include "lauxlib.h"
+#include "lobfuscator.h"
 
 
 /* limit for table tag-method chains (to avoid loops) */
@@ -742,8 +743,26 @@ void luaV_finishOp (lua_State *L) {
     if (a != 0) luaF_close(L, ci->u.l.base + a - 1); \
     ci->u.l.savedpc += GETARG_sBx(i) + e; }
 
+#define DECODE_INST(inst) { \
+  if (cl->p->obfuscated) { \
+    inst = DECRYPT_INST(inst); \
+    inst = LUA_OP_DECODE(cl->p->op_xor, inst); \
+  } \
+}
+
+#define RESOLVE_IF_VIRTUAL(inst, p) { \
+  if (GET_OPCODE(inst) == OP_VIRTUAL) { \
+    unsigned int ax_v = (unsigned int)GETARG_Ax(inst); \
+    unsigned int idx_v = (((ax_v ^ MBA_K1) - MBA_K2) ^ MBA_K3) - MBA_K4; \
+    idx_v &= 0x3FFFFFF; \
+    inst = (p)->code[idx_v]; \
+    inst = DECRYPT_INST(inst); \
+    inst = LUA_OP_DECODE((p)->op_xor, inst); \
+  } \
+}
+
 /* for test instructions, execute the jump instruction that follows it */
-#define donextjump(ci)	{ i = *ci->u.l.savedpc; dojump(ci, i, 1); }
+#define donextjump(ci)	{ Instruction jump_i = *ci->u.l.savedpc; DECODE_INST(jump_i); RESOLVE_IF_VIRTUAL(jump_i, cl->p); dojump(ci, jump_i, 1); }
 
 
 #define Protect(x)	{ {x;}; base = ci->u.l.base; }
@@ -755,7 +774,10 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* fetch an instruction and prepare its execution */
-#define vmfetch() { i = *(ci->u.l.savedpc++); \n  if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) Protect(luaG_traceexec(L)); \n  i = DECRYPT_INST(i); \n  { lu_byte op_enc = cast(lu_byte, getarg(i, POS_OP, SIZE_OP)); \n    OpCode op = cast(OpCode, (luaP_op_decode[op_enc]) ^ cl->p->op_xor); \n    SET_OPCODE(i, op); } \n  ra = RA(i); }
+#define vmfetch() { \
+  i = *(ci->u.l.savedpc++); \
+  if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) \
+    Protect(luaG_traceexec(L)); \
   lua_assert(base == ci->u.l.base); \
   lua_assert(base <= L->top && L->top < L->stack + L->stacksize); \
 }
@@ -779,11 +801,6 @@ void luaV_finishOp (lua_State *L) {
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \
     Protect(luaV_finishset(L,t,k,v,slot)); }
 
-#ifdef __ANDROID__
-#include <android/log.h>
-#define LOG_TAG "lua"
-#define LOGD(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#endif
 static int luaB_next (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
@@ -811,6 +828,8 @@ void luaV_execute (lua_State *L) {
     Instruction i;
     StkId ra;
     vmfetch();
+    decode_instruction:
+    DECODE_INST(i);
     execute_opcode:
     ra = RA(i);
     vmdispatch (GET_OPCODE(i)) {
@@ -825,8 +844,11 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_LOADKX) {
         TValue *rb;
-        lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-        rb = k + GETARG_Ax(*ci->u.l.savedpc++);
+        Instruction next_i = *ci->u.l.savedpc++;
+        DECODE_INST(next_i);
+        RESOLVE_IF_VIRTUAL(next_i, cl->p);
+        lua_assert(GET_OPCODE(next_i) == OP_EXTRAARG);
+        rb = k + GETARG_Ax(next_i);
         setobj2s(L, ra, rb);
         vmbreak;
       }
@@ -863,21 +885,6 @@ void luaV_execute (lua_State *L) {
         TValue *upval = cl->upvals[GETARG_A(i)]->v;
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        if(ttistable(ra)) {
-            Table *t = hvalue(ra);
-            switch (t->type) {
-                case 1:
-                    if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
-                    break;
-                case 2:
-                    luaG_runerror(L, "const table cannot be set");
-                    break;
-                case 3:
-                    luaG_runerror(L, "array key must be a integer");
-                    break;
-            }
-        }
         settableProtected(L, upval, rb, rc);
         vmbreak;
       }
@@ -890,39 +897,13 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_SETTABLE) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        if(ttistable(ra)) {
-            Table *t = hvalue(ra);
-            switch (t->type) {
-                case 1:
-                    if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
-                    break;
-                case 2:
-                    luaG_runerror(L, "const table cannot be set");
-                    break;
-                case 3:
-                    luaG_runerror(L, "array key must be a integer");
-                    break;
-            }
-        }
         settableProtected(L, ra, rb, rc);
-        vmbreak;
-      }
-      vmcase(OP_NEWARRAY) {
-        int b = GETARG_B(i);
-        Table *t = luaH_new(L);
-        sethvalue(L, ra, t);
-        t->type=1;
-        if (b != 0)
-          luaH_resize(L, t, luaO_fb2int(b), luaO_fb2int(0));
-        checkGC(L, ra + 1);
         vmbreak;
       }
       vmcase(OP_NEWTABLE) {
         int b = GETARG_B(i);
         int c = GETARG_C(i);
         Table *t = luaH_new(L);
-        t->type=0;
         sethvalue(L, ra, t);
         if (b != 0 || c != 0)
           luaH_resize(L, t, luaO_fb2int(b), luaO_fb2int(c));
@@ -1294,18 +1275,6 @@ void luaV_execute (lua_State *L) {
         ci->u.l.savedpc += GETARG_sBx(i);
         vmbreak;
       }
-        vmcase(OP_TFOREACH) {
-          StkId cb = ra + 3;  /* call base */
-          lua_pushcfunction(L, luaB_next);  /* will return generator, */
-          lua_pushvalue(L,-2);
-          L->top = cb + 3;  /* func. + 2 args (state and index) */
-          lua_call(L, 1, 3);
-          setobjs2s(L, cb+2, ra+2);
-          setobjs2s(L, cb+1, ra+1);
-          setobjs2s(L, cb, ra);
-          L->top = ci->top;
-          vmbreak;
-        }
       vmcase(OP_TFORCALL) {
         StkId cb = ra + 3;  /* call base */
         setobjs2s(L, cb+2, ra+2);
@@ -1315,6 +1284,8 @@ void luaV_execute (lua_State *L) {
         Protect(luaD_call(L, cb, GETARG_C(i)));
         L->top = ci->top;
         i = *(ci->u.l.savedpc++);  /* go to next instruction */
+        DECODE_INST(i);
+        RESOLVE_IF_VIRTUAL(i, cl->p);
         ra = RA(i);
         lua_assert(GET_OPCODE(i) == OP_TFORLOOP);
         goto l_tforloop;
@@ -1334,8 +1305,11 @@ void luaV_execute (lua_State *L) {
         Table *h;
         if (n == 0) n = cast_int(L->top - ra) - 1;
         if (c == 0) {
-          lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-          c = GETARG_Ax(*ci->u.l.savedpc++);
+          Instruction next_i = *ci->u.l.savedpc++;
+          DECODE_INST(next_i);
+          RESOLVE_IF_VIRTUAL(next_i, cl->p);
+          lua_assert(GET_OPCODE(next_i) == OP_EXTRAARG);
+          c = GETARG_Ax(next_i);
         }
         h = hvalue(ra);
         last = ((c-1)*LFIELDS_PER_FLUSH) + n;
@@ -1379,11 +1353,11 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_VIRTUAL) {
         unsigned int ax = (unsigned int)GETARG_Ax(i);
-        unsigned int idx = (ax - 0x123456) ^ 0xABCDEF;
+        /* Complex MBA decoding */
+        unsigned int idx = (((ax ^ MBA_K1) - MBA_K2) ^ MBA_K3) - MBA_K4;
         idx &= 0x3FFFFFF;
         i = cl->p->code[idx];
-        goto execute_opcode;
-      }
+        goto decode_instruction;
       }
       vmcase(OP_EXTRAARG) {
         lua_assert(0);
@@ -1394,6 +1368,28 @@ void luaV_execute (lua_State *L) {
         up->tt = LUA_TUPVALTBC;  /* mark it to be closed */
         vmbreak;
       }
+      vmcase(OP_NEWARRAY) {
+        int b = GETARG_B(i);
+        Table *t = luaH_new(L);
+        sethvalue(L, ra, t);
+        t->type=1;
+        if (b != 0)
+          luaH_resize(L, t, luaO_fb2int(b), luaO_fb2int(0));
+        checkGC(L, ra + 1);
+        vmbreak;
+      }
+      vmcase(OP_TFOREACH) {
+          StkId cb = ra + 3;  /* call base */
+          lua_pushcfunction(L, luaB_next);  /* will return generator, */
+          lua_pushvalue(L,-2);
+          L->top = cb + 3;  /* func. + 2 args (state and index) */
+          lua_call(L, 1, 3);
+          setobjs2s(L, cb+2, ra+2);
+          setobjs2s(L, cb+1, ra+1);
+          setobjs2s(L, cb, ra);
+          L->top = ci->top;
+          vmbreak;
+        }
     }
   }
 }

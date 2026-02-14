@@ -93,22 +93,20 @@ static lua_Integer LoadInteger (LoadState *S) {
 
 
 static TString *LoadString (LoadState *S) {
-  //nirenr mod
-  //size_t size = LoadByte(S);
   unsigned int size = LoadByte(S);
   if (size == 0xFF)
     LoadVar(S, size);
   if (size == 0)
     return NULL;
-  else if (--size <= LUAI_MAXSHORTLEN) {  /* short string? */
-    char buff[LUAI_MAXSHORTLEN];
+  else if (size - 1 <= LUAI_MAXSHORTLEN) {  /* short string? */
+    char buff[LUAI_MAXSHORTLEN + 1];
     unsigned int j;
     LoadVector(S, buff, size);
     for (j = 0; j < size; j++) buff[j] ^= LUA_CONST_XOR;
-    return luaS_newlstr(S->L, buff, size);
+    return luaS_newlstr(S->L, buff, size - 1);
   }
   else {  /* long string */
-    TString *ts = luaS_createlngstrobj(S->L, size);
+    TString *ts = luaS_createlngstrobj(S->L, size - 1);
     unsigned int j;
     char *s;
     LoadVector(S, getstr(ts), size);  /* load directly in final place */
@@ -224,7 +222,7 @@ static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
   f->is_vararg = LoadByte(S);
   f->maxstacksize = LoadByte(S);
   f->obfuscated = LoadByte(S);
-f->op_xor = LoadByte(S);
+  f->op_xor = LoadByte(S);
   LoadCode(S, f);
   LoadConstants(S, f);
   LoadUpvalues(S, f);
@@ -258,8 +256,6 @@ static void checkHeader (LoadState *S) {
     error(S, "format mismatch in");
   checkliteral(S, LUAC_DATA, "corrupted");
   checksize(S, int);
-  //nirenr mod
-  //checksize(S, size_t);
   checksize(S, unsigned int);
   checksize(S, Instruction);
   checksize(S, lua_Integer);
@@ -292,6 +288,5 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
   cl->p = luaF_newproto(L);
   LoadFunction(&S, cl->p, NULL);
   lua_assert(cl->nupvalues == cl->p->sizeupvalues);
-  luai_verifycode(L, buff, cl->p);
   return cl;
 }

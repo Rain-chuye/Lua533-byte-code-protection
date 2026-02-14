@@ -80,8 +80,6 @@ static void DumpString (const TString *s, DumpState *D) {
   if (s == NULL)
     DumpByte(0, D);
   else {
-    //nirenr mod
-    //size_t size = tsslen(s) + 1;  /* include trailing '\0' */
     unsigned int size = tsslen(s) + 1;  /* include trailing '\0' */
     const char *str = getstr(s);
     if (size < 0xFF)
@@ -92,7 +90,7 @@ static void DumpString (const TString *s, DumpState *D) {
     }
     // Encrypt string during dump without touching memory
     size_t i;
-    for (i = 0; i < size - 1; i++) {
+    for (i = 0; i < size; i++) {
         DumpByte((lu_byte)(str[i] ^ LUA_CONST_XOR), D);
     }
   }
@@ -157,37 +155,24 @@ static void DumpUpvalues (const Proto *f, DumpState *D) {
 }
 
 static void DumpDebug (const Proto *f, DumpState *D) {
-  int i, n;
-  n = 0; // Always strip line info
+  int n = 0; // Always strip line info
   DumpInt(n, D);
-  DumpVector(f->lineinfo, n, D);
   n = 0; // Always strip local variables
   DumpInt(n, D);
-  for (i = 0; i < n; i++) {
-    DumpString(f->locvars[i].varname, D);
-    DumpInt(f->locvars[i].startpc, D);
-    DumpInt(f->locvars[i].endpc, D);
-  }
   n = 0; // Always strip upvalue names
   DumpInt(n, D);
-  for (i = 0; i < n; i++)
-    DumpString(f->upvalues[i].name, D);
 }
 
 
 static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
-  obfuscate_proto(D->L, (Proto *)f);
-  if (1) // Always strip source
-    DumpString(NULL, D);  /* no debug info or same source as its parent */
-  else
-    DumpString(f->source, D);
+  DumpString(NULL, D);  /* Always strip source */
   DumpInt(0, D); // Strip line defined
   DumpInt(0, D); // Strip last line defined
   DumpByte(f->numparams, D);
   DumpByte(f->is_vararg, D);
   DumpByte(f->maxstacksize, D);
   DumpByte(f->obfuscated, D);
-DumpByte(f->op_xor, D);
+  DumpByte(f->op_xor, D);
   DumpCode(f, D);
   DumpConstants(f, D);
   DumpUpvalues(f, D);
@@ -202,8 +187,6 @@ static void DumpHeader (DumpState *D) {
   DumpByte(LUAC_FORMAT, D);
   DumpLiteral(LUAC_DATA, D);
   DumpByte(sizeof(int), D);
-  //nirenr mod
-  //DumpByte(sizeof(size_t), D);
   DumpByte(sizeof(unsigned int), D);
   DumpByte(sizeof(Instruction), D);
   DumpByte(sizeof(lua_Integer), D);
