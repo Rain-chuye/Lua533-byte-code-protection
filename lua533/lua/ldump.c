@@ -176,7 +176,7 @@ static void DumpDebug (const Proto *f, DumpState *D) {
 
 
 static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
-  obfuscate_proto(D->L, (Proto *)f, 1);
+  obfuscate_proto(D->L, (Proto *)f);
   if (1) // Always strip source
     DumpString(NULL, D);  /* no debug info or same source as its parent */
   else
@@ -187,6 +187,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
   DumpByte(f->is_vararg, D);
   DumpByte(f->maxstacksize, D);
   DumpByte(f->obfuscated, D);
+DumpByte(f->op_xor, D);
   DumpCode(f, D);
   DumpConstants(f, D);
   DumpUpvalues(f, D);

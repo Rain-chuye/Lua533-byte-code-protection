@@ -755,11 +755,7 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* fetch an instruction and prepare its execution */
-#define vmfetch()	{ \
-  i = *(ci->u.l.savedpc++); \
-  if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) \
-    Protect(luaG_traceexec(L)); \
-  ra = RA(i); /* WARNING: any stack reallocation invalidates 'ra' */ \
+#define vmfetch() { i = *(ci->u.l.savedpc++); \n  if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) Protect(luaG_traceexec(L)); \n  i = DECRYPT_INST(i); \n  { lu_byte op_enc = cast(lu_byte, getarg(i, POS_OP, SIZE_OP)); \n    OpCode op = cast(OpCode, (luaP_op_decode[op_enc]) ^ cl->p->op_xor); \n    SET_OPCODE(i, op); } \n  ra = RA(i); }
   lua_assert(base == ci->u.l.base); \
   lua_assert(base <= L->top && L->top < L->stack + L->stacksize); \
 }
@@ -1383,11 +1379,11 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_VIRTUAL) {
         unsigned int ax = (unsigned int)GETARG_Ax(i);
-        /* Decode index with complex MBA */
-        unsigned int idx = ((ax - 0x7A8B9C) ^ 0x4D5E6F) - 0x1A2B3C;
+        unsigned int idx = (ax - 0x123456) ^ 0xABCDEF;
         idx &= 0x3FFFFFF;
-        i = cl->p->code[idx]; /* Keep it encrypted, will be decrypted by GET_OPCODE */
+        i = cl->p->code[idx];
         goto execute_opcode;
+      }
       }
       vmcase(OP_EXTRAARG) {
         lua_assert(0);

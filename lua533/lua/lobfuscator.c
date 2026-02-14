@@ -6,10 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 
 typedef struct {
     int start;
-    int end; /* inclusive */
+    int end;
     int new_start;
 } Block;
 
@@ -21,6 +22,9 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
     for (i = 0; i < f->sizep; i++) {
         virtualize_proto_internal(L, f->p[i]);
     }
+
+    /* Initialize dynamic XOR key */
+    if (f->op_xor == 0) f->op_xor = (lu_byte)(rand() % 254 + 1);
 
     /* 1. Identify basic blocks */
     char *is_target = (char *)calloc(size, 1);
@@ -34,7 +38,7 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             if (i + 1 < size) is_target[i + 1] = 1;
         } else if (op == OP_RETURN || op == OP_TAILCALL) {
             if (i + 1 < size) is_target[i + 1] = 1;
-        } else if (testTMode(op)) {
+        } else if (testTMode(op) || op == OP_TFORCALL || op == OP_LOADKX || (op == OP_SETLIST && GETARG_C(inst) == 0)) {
             if (i + 2 < size) is_target[i + 2] = 1;
         }
     }
@@ -53,19 +57,15 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
     }
     blocks[block_count - 1].end = size - 1;
 
-    /* 2. Shuffle blocks */
     int *shuf = (int *)malloc(block_count * sizeof(int));
     for (i = 0; i < block_count; i++) shuf[i] = i;
-    unsigned int seed = (unsigned int)time(NULL) + (unsigned int)(size_t)f;
+    unsigned int seed = (unsigned int)(uintptr_t)f + (unsigned int)time(NULL);
     for (i = block_count - 1; i > 0; i--) {
         seed = seed * 1103515245 + 12345;
         int k = (seed / 65536) % (i + 1);
-        int temp = shuf[i];
-        shuf[i] = shuf[k];
-        shuf[k] = temp;
+        int temp = shuf[i]; shuf[i] = shuf[k]; shuf[k] = temp;
     }
 
-    /* 3. Reconstruct code with shuffled blocks and fix jumps */
     int new_code_size = 0;
     int *has_extra_jmp = (int *)calloc(block_count, sizeof(int));
     for (i = 0; i < block_count; i++) {
@@ -92,7 +92,6 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
         }
     }
 
-    /* Fix JMPs in rearranged_code */
     curr_pos = 0;
     for (i = 0; i < block_count; i++) {
         int idx = shuf[i];
@@ -103,9 +102,7 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
                 int old_target = (blocks[idx].start + j) + 1 + GETARG_sBx(*pinst);
                 int target_block = -1;
                 for (int k = 0; k < block_count; k++) {
-                    if (old_target >= blocks[k].start && old_target <= blocks[k].end) {
-                        target_block = k; break;
-                    }
+                    if (old_target >= blocks[k].start && old_target <= blocks[k].end) { target_block = k; break; }
                 }
                 if (target_block != -1) {
                     int new_target = blocks[target_block].new_start + (old_target - blocks[target_block].start);
@@ -119,17 +116,12 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             int old_next = blocks[idx].end + 1;
             int target_block = -1;
             for (int k = 0; k < block_count; k++) {
-                if (old_next >= blocks[k].start && old_next <= blocks[k].end) {
-                    target_block = k; break;
-                }
+                if (old_next >= blocks[k].start && old_next <= blocks[k].end) { target_block = k; break; }
             }
-            if (target_block != -1) {
-                SETARG_sBx(*pjmp, blocks[target_block].new_start - curr_pos);
-            }
+            if (target_block != -1) SETARG_sBx(*pjmp, blocks[target_block].new_start - curr_pos);
         }
     }
 
-    /* 4. Full Instruction Virtualization with shuffled storage */
     Instruction *final_code = luaM_newvector(L, new_code_size * 2, Instruction);
     int *inst_shuf = (int *)malloc(new_code_size * sizeof(int));
     int *old_to_final_pos = (int *)malloc(new_code_size * sizeof(int));
@@ -137,11 +129,8 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
     for (i = new_code_size - 1; i > 0; i--) {
         seed = seed * 1103515245 + 12345;
         int k = (seed / 65536) % (i + 1);
-        int temp = inst_shuf[i];
-        inst_shuf[i] = inst_shuf[k];
-        inst_shuf[k] = temp;
+        int temp = inst_shuf[i]; inst_shuf[i] = inst_shuf[k]; inst_shuf[k] = temp;
     }
-
     for (i = 0; i < new_code_size; i++) {
         int original_idx = inst_shuf[i];
         old_to_final_pos[original_idx] = new_code_size + i;
@@ -151,32 +140,35 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
     for (i = 0; i < new_code_size; i++) {
         Instruction inst = rearranged_code[i];
         OpCode op = GET_OPCODE(inst);
-
-        if (op == OP_EXTRAARG) {
-            final_code[i] = inst;
-        } else if (i > 0 && testTMode(GET_OPCODE(rearranged_code[i-1]))) {
+        int preserve = 0;
+        if (op == OP_EXTRAARG) preserve = 1;
+        else if (i > 0) {
+            OpCode prev_op = GET_OPCODE(rearranged_code[i-1]);
+            if (testTMode(prev_op) || prev_op == OP_TFORCALL || prev_op == OP_LOADKX ||
+                (prev_op == OP_SETLIST && GETARG_C(rearranged_code[i-1]) == 0)) preserve = 1;
+        }
+        if (preserve) {
             final_code[i] = inst;
         } else {
             unsigned int target = (unsigned int)old_to_final_pos[i];
-            unsigned int encoded = ((target + 0x1A2B3C) ^ 0x4D5E6F) + 0x7A8B9C;
+            unsigned int encoded = (target ^ 0xABCDEF) + 0x123456;
             final_code[i] = CREATE_Ax(OP_VIRTUAL, encoded & 0x3FFFFFF);
         }
     }
 
-    luaM_freearray(L, f->code, f->sizecode);
-    f->code = final_code;
-    f->sizecode = new_code_size * 2;
-    f->obfuscated = 1;
+    /* Finally, encrypt all instructions using op_xor and static tables */
+    for (i = 0; i < new_code_size * 2; i++) {
+        Instruction inst = final_code[i];
+        OpCode op = GET_OPCODE(inst);
+        lu_byte encoded_op = luaP_op_encode[op ^ f->op_xor];
+        SET_OPCODE(inst, encoded_op);
+        final_code[i] = ENCRYPT_INST(inst);
+    }
 
-    free(is_target);
-    free(blocks);
-    free(shuf);
-    free(has_extra_jmp);
-    free(inst_shuf);
-    free(old_to_final_pos);
+    luaM_freearray(L, f->code, f->sizecode);
+    f->code = final_code; f->sizecode = new_code_size * 2; f->obfuscated = 1;
+    free(is_target); free(blocks); free(shuf); free(has_extra_jmp); free(inst_shuf); free(old_to_final_pos);
     luaM_freearray(L, rearranged_code, new_code_size);
 }
 
-void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
-    virtualize_proto_internal(L, f);
-}
+void obfuscate_proto(lua_State *L, Proto *f) { virtualize_proto_internal(L, f); }

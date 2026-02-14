@@ -224,6 +224,7 @@ static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
   f->is_vararg = LoadByte(S);
   f->maxstacksize = LoadByte(S);
   f->obfuscated = LoadByte(S);
+f->op_xor = LoadByte(S);
   LoadCode(S, f);
   LoadConstants(S, f);
   LoadUpvalues(S, f);
