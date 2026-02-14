@@ -1,0 +1,3 @@
+a:	55
+test(10):	gt
+test(3):	le

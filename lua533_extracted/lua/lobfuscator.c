@@ -37,7 +37,7 @@ static void inject_emoji_constants(lua_State *L, Proto *f) {
 }
 
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
-    if (f->sizecode == 0) return;
+    if (f->sizecode == 0 || f->vcode != NULL) return;
 
     int old_sizecode = f->sizecode;
 
@@ -53,6 +53,9 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             if (target >= 0 && target < old_sizecode) is_target[target] = 1;
         }
         if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET || op == OP_TFORCALL) {
+            if (i + 1 < old_sizecode) is_target[i + 1] = 1;
+        }
+        if (op == OP_LOADBOOL && GETARG_C(inst) != 0) {
             if (i + 1 < old_sizecode) is_target[i + 1] = 1;
         }
         if (op == OP_LOADKX || op == OP_SETLIST) {
@@ -118,6 +121,7 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     inject_emoji_constants(L, f);
 
     // Increase stack size to provide slots for dynamic decryption (RK values)
+    f->scratch_base = f->maxstacksize;
     if (f->maxstacksize <= 253) f->maxstacksize += 2;
     else f->maxstacksize = 255;
 

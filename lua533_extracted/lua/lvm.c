@@ -750,9 +750,9 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 }
 
 #define RKB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), base + cl->p->maxstacksize - 2) : base+GETARG_B(i))
+	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), base + cl->p->scratch_base) : base+GETARG_B(i))
 #define RKC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->maxstacksize - 1) : base+GETARG_C(i))
+	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1) : base+GETARG_C(i))
 
 
 /* execute a jump instruction */
@@ -899,8 +899,9 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_LOADKX) {
         TValue *rb;
-        lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-        rb = k + GETARG_Ax(*ci->u.l.savedpc++);
+        Instruction extra = *ci->u.l.savedpc++;
+        lua_assert(GET_OPCODE(extra) == OP_EXTRAARG);
+        rb = k + GETARG_Ax(extra);
         setobj2s(L, ra, rb);
         decrypt_tv(ra);
         vmbreak;
@@ -938,8 +939,8 @@ void luaV_execute (lua_State *L) {
         TValue *upval = cl->upvals[GETARG_A(i)]->v;
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        if(ttistable(ra)) {
-            Table *t = hvalue(ra);
+        if(ttistable(upval)) {
+            Table *t = hvalue(upval);
             switch (t->type) {
                 case 1:
                     if (!ttisinteger(rb))
@@ -1409,8 +1410,9 @@ void luaV_execute (lua_State *L) {
         Table *h;
         if (n == 0) n = cast_int(L->top - ra) - 1;
         if (c == 0) {
-          lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-          c = GETARG_Ax(*ci->u.l.savedpc++);
+          Instruction extra = *ci->u.l.savedpc++;
+          lua_assert(GET_OPCODE(extra) == OP_EXTRAARG);
+          c = GETARG_Ax(extra);
         }
         h = hvalue(ra);
         last = ((c-1)*LFIELDS_PER_FLUSH) + n;

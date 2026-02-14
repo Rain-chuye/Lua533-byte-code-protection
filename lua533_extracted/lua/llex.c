@@ -166,6 +166,7 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
   ls->L = L;
   ls->current = firstchar;
   ls->lookahead.token = TK_EOS;  /* no look-ahead token */
+  ls->lookahead2.token = TK_EOS; /* no second look-ahead token */
   ls->z = z;
   ls->fs = NULL;
   ls->linenumber = 1;
@@ -605,7 +606,8 @@ void luaX_next (LexState *ls) {
   ls->lastline = ls->linenumber;
   if (ls->lookahead.token != TK_EOS) {  /* is there a look-ahead token? */
     ls->t = ls->lookahead;  /* use this one */
-    ls->lookahead.token = TK_EOS;  /* and discharge it */
+    ls->lookahead = ls->lookahead2;  /* move second to first */
+    ls->lookahead2.token = TK_EOS;  /* and discharge second */
   }
   else
     ls->t.token = llex(ls, &ls->t.seminfo);  /* read next token */
@@ -613,7 +615,18 @@ void luaX_next (LexState *ls) {
 
 
 int luaX_lookahead (LexState *ls) {
-  lua_assert(ls->lookahead.token == TK_EOS);
-  ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
+  if (ls->lookahead.token == TK_EOS) {
+    ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
+  }
   return ls->lookahead.token;
+}
+
+int luaX_lookahead2 (LexState *ls) {
+  if (ls->lookahead.token == TK_EOS) {
+    ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
+  }
+  if (ls->lookahead2.token == TK_EOS) {
+    ls->lookahead2.token = llex(ls, &ls->lookahead2.seminfo);
+  }
+  return ls->lookahead2.token;
 }

@@ -574,6 +574,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->nups = 0;
   fs->nlocvars = 0;
   fs->nactvar = 0;
+  fs->in_ternary = 0;
   fs->needclose = 0;
   fs->firstlocal = ls->dyd->actvar.n;
   fs->bl = NULL;
@@ -916,12 +917,6 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   //checknext(ls, ')');
   b=testnext(ls, '{');
 
-  new_localvar(ls, ls->envn);
-  expdesc env;
-  singlevaraux(ls->fs, ls->envn, &env, 1);
-  adjust_assign(ls, 1, 1, &env);
-  adjustlocalvars(ls, 1);
-
   statlist(ls);
   new_fs.f->lastlinedefined = ls->linenumber;
   if(b)
@@ -1100,6 +1095,12 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         break;
       }
       case ':': {  /* ':' NAME funcargs */
+        if (fs->in_ternary) {
+          int t1 = luaX_lookahead(ls);
+          if (t1 != TK_NAME) return;
+          int t2 = luaX_lookahead2(ls);
+          if (t2 != '(' && t2 != '{' && t2 != TK_STRING) return;
+        }
         expdesc key;
         luaX_next(ls);
         checkname(ls, &key);
@@ -1284,7 +1285,9 @@ static void expr (LexState *ls, expdesc *v) {
     luaK_goiftrue(fs, v);
     v_false = v->f;
     luaK_patchtohere(fs, v->t);
+    fs->in_ternary++;
     expr(ls, v);  /* parse true branch */
+    fs->in_ternary--;
     luaK_exp2nextreg(fs, v);
     int reg = v->u.info;
     luaK_concat(fs, &end_jmp, luaK_jump(fs));
@@ -2119,11 +2122,6 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   fs->f->is_vararg = 2;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
-  new_localvar(ls, ls->envn);
-  expdesc env;
-  singlevaraux(ls->fs, ls->envn, &env, 1);
-  adjust_assign(ls, 1, 1, &env);
-  adjustlocalvars(ls, 1);
   luaX_next(ls);  /* read first token */
   if(ls->t.token==TK_STRING||ls->t.token=='{')
     retstat(ls);

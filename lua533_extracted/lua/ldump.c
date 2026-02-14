@@ -188,6 +188,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
   DumpByte(f->numparams, D);
   DumpByte(f->is_vararg, D);
   DumpByte(f->maxstacksize, D);
+  DumpByte(f->scratch_base, D);
   DumpCode(f, D);
   DumpVCode(f, D);
   DumpConstants(f, D);

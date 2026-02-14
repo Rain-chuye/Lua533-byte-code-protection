@@ -1,0 +1,1 @@
+./lua533_extracted/lua/lua: test_ternary_global.lua:6: 缺少 ':' (在 'print' 附近)

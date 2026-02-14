@@ -37,12 +37,12 @@ static lua_Number decrypt_float_obf(lua_Number n) {
   union { lua_Number f; unsigned long long i; } u;
   u.f = n;
   u.i ^= LUA_FLT_XOR;
-  return (u.f - LUA_FLT_ADD) / LUA_FLT_MUL;
+  return u.f;
 }
 
 static lua_Number encrypt_float_obf(lua_Number n) {
   union { lua_Number f; unsigned long long i; } u;
-  u.f = n * LUA_FLT_MUL + LUA_FLT_ADD;
+  u.f = n;
   u.i ^= LUA_FLT_XOR;
   return u.f;
 }
