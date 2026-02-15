@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "lua.h"
 
@@ -1669,13 +1670,32 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
 
 LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t len) {
     unsigned int whole_crc = luaL_crc32(input, len);
-    char *encoded = luaL_encrypt_chuye(input, len, whole_crc, 1, 1);
+    size_t chunk_size = 1024;
+    int total = (int)((len + chunk_size - 1) / chunk_size);
+    if (total == 0 && len == 0) total = 1;
 
-    size_t out_capacity = strlen(encoded) + 64;
+    size_t out_capacity = (len * 2) + (total * 256) + 1024;
     char *script = (char *)malloc(out_capacity);
-    // \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6 -> 初叶定制
-    sprintf(script, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n%s", encoded);
-    free(encoded);
+    size_t opi = 0;
+
+    char varname[10];
+    srand((unsigned int)time(NULL));
+    sprintf(varname, "l_%x", (unsigned int)rand() % 0xFFFF);
+
+    opi += sprintf(script + opi, "-- \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
+    opi += sprintf(script + opi, "local %s = load\n", varname);
+
+    for (int i = 1; i <= total; i++) {
+        size_t offset = (i - 1) * chunk_size;
+        size_t this_size = (i == total) ? (len - offset) : chunk_size;
+        char *encoded = luaL_encrypt_chuye(input + offset, this_size, whole_crc, total, i);
+        if (i == total)
+            opi += sprintf(script + opi, "%s(\"%s\")()\n", varname, encoded);
+        else
+            opi += sprintf(script + opi, "%s(\"%s\")\n", varname, encoded);
+        free(encoded);
+    }
+
     return script;
 }
 
