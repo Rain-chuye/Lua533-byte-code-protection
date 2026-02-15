@@ -886,7 +886,7 @@ static void parlist (LexState *ls) {
         }
         case TK_DOTS: {  /* param -> '...' */
           luaX_next(ls);
-          f->is_vararg = 1;  /* declared vararg */
+          f->is_vararg = 2;  /* declared vararg */
           break;
         }
         default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
@@ -952,7 +952,7 @@ static void lambda_parlist(LexState *ls) {
                 }
                 case TK_DOTS: {  /* param -> '...' */
                     luaX_next(ls);
-                    f->is_vararg = 1;
+                    f->is_vararg = 2;
                     break;
                 }
                 default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
@@ -1277,16 +1277,20 @@ static void ternaryexp (LexState *ls, expdesc *v) {
   expdesc v2, v3;
   int jf, jl;
   int reg;
+  int old_free;
   luaK_exp2nextreg(fs, v);
   reg = v->u.info;
+  old_free = fs->freereg;
   jf = luaK_codeAsBx(fs, OP_TERNARY, reg, NO_JUMP);
   expr(ls, &v2);
   checknext(ls, ':');
   luaK_exp2reg(fs, &v2, reg);
+  fs->freereg = old_free;
   jl = luaK_jump(fs);
   luaK_patchtohere(fs, jf);
   expr(ls, &v3);
   luaK_exp2reg(fs, &v3, reg);
+  fs->freereg = old_free;
   luaK_patchtohere(fs, jl);
   v->k = VNONRELOC;
   v->u.info = reg;
@@ -2114,7 +2118,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
-  fs->f->is_vararg = 1;  /* main function is always vararg */
+  fs->f->is_vararg = 2;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
   luaX_next(ls);  /* read first token */
