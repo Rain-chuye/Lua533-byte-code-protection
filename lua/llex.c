@@ -43,7 +43,8 @@ static const char *const luaX_tokens [] = {
     "in", "lambda", "local", "nil", "not", "or", "repeat",
     "return", "switch", "then", "true", "until", "when", "while",
     "//", "..", "...", "==", ">=", "<=", "~=",
-    "<<", ">>", "::", "<eof>",
+    "<<", ">>", "+=", "-=", "*=", "/=", "//=", "%=", "^=",
+    "..=", "&=", "|=", "<<=", ">>=", "::", "<eof>",
     "->", "=>",
     "<number>", "<integer>", "<name>", "<string>"
 };
@@ -466,6 +467,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '-': {  /* '-' or '--' (comment) */
         next(ls);
         if (check_next1(ls, '>')) return TK_LET;//mod by nirenr
+        if (check_next1(ls, '=')) return TK_MINUSEQ;
         if (ls->current != '-') return '-';
         /* else is a comment */
         next(ls);
@@ -506,18 +508,28 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '<': {
         next(ls);
         if (check_next1(ls, '=')) return TK_LE;
-        else if (check_next1(ls, '<')) return TK_SHL;
+        else if (check_next1(ls, '<')) {
+          if (check_next1(ls, '=')) return TK_SHLEQ;
+          return TK_SHL;
+        }
         else return '<';
       }
       case '>': {
         next(ls);
         if (check_next1(ls, '=')) return TK_GE;
-        else if (check_next1(ls, '>')) return TK_SHR;
+        else if (check_next1(ls, '>')) {
+          if (check_next1(ls, '=')) return TK_SHREQ;
+          return TK_SHR;
+        }
         else return '>';
       }
       case '/': {
         next(ls);
-        if (check_next1(ls, '/')) return TK_IDIV;
+        if (check_next1(ls, '/')) {
+          if (check_next1(ls, '=')) return TK_IDIVEQ;
+          return TK_IDIV;
+        }
+        if (check_next1(ls, '=')) return TK_DIVEQ;
         else return '/';
       }
 //mod by nirenr
@@ -537,11 +549,13 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '&': {
          next(ls);
          if (check_next1(ls, '&')) return TK_AND;
+         if (check_next1(ls, '=')) return TK_BITANDEQ;
          return '&';
       }
       case '|': {
          next(ls);
          if (check_next1(ls, '|')) return TK_OR;
+         if (check_next1(ls, '=')) return TK_BITOREQ;
          return '|';
       }
 //---
@@ -555,6 +569,26 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         if (check_next1(ls, ':')) return TK_DBCOLON;
         else return ':';
       }
+      case '+': {
+        next(ls);
+        if (check_next1(ls, '=')) return TK_PLUSEQ;
+        else return '+';
+      }
+      case '*': {
+        next(ls);
+        if (check_next1(ls, '=')) return TK_MULTEQ;
+        else return '*';
+      }
+      case '%': {
+        next(ls);
+        if (check_next1(ls, '=')) return TK_MODEQ;
+        else return '%';
+      }
+      case '^': {
+        next(ls);
+        if (check_next1(ls, '=')) return TK_POWEQ;
+        else return '^';
+      }
       case '"': case '\'': {  /* short literal strings */
         read_string(ls, ls->current, seminfo);
         return TK_STRING;
@@ -564,6 +598,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         if (check_next1(ls, '.')) {
           if (check_next1(ls, '.'))
             return TK_DOTS;   /* '...' */
+          else if (check_next1(ls, '=')) return TK_CONCATEQ;
           else return TK_CONCAT;   /* '..' */
         }
         else if (!lisdigit(ls->current)) return '.';

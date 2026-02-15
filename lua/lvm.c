@@ -735,7 +735,7 @@ static void decrypt_tv(TValue *o) {
   if (ttisinteger(o)) {
     o->value_.i = DECRYPT_INT(o->value_.i);
   } else if (ttisfloat(o)) {
-    o->value_.n = DECRYPT_FLT_VAL(o->value_.n);
+    // o->value_.n = DECRYPT_FLT_VAL(o->value_.n);
   }
 }
 

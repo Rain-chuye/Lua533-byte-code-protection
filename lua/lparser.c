@@ -1401,9 +1401,27 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
 }
 
 
+static BinOpr get_compound_opr(int token) {
+  switch (token) {
+    case TK_PLUSEQ: return OPR_ADD;
+    case TK_MINUSEQ: return OPR_SUB;
+    case TK_MULTEQ: return OPR_MUL;
+    case TK_DIVEQ: return OPR_DIV;
+    case TK_IDIVEQ: return OPR_IDIV;
+    case TK_MODEQ: return OPR_MOD;
+    case TK_POWEQ: return OPR_POW;
+    case TK_CONCATEQ: return OPR_CONCAT;
+    case TK_BITANDEQ: return OPR_BAND;
+    case TK_BITOREQ: return OPR_BOR;
+    case TK_SHLEQ: return OPR_SHL;
+    case TK_SHREQ: return OPR_SHR;
+    default: return OPR_NOBINOPR;
+  }
+}
+
 static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
-  check_condition(ls, vkisvar(lh->v.k), "syntax error");
+  check_condition(ls, vkisvar(lh->v.k), "语法错误");
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
@@ -1414,19 +1432,32 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
                     "C levels");
     assignment(ls, &nv, nvars+1);
   }
-  else {  /* assignment -> '=' explist */
-    int nexps;
-    checknext(ls, '=');
-    nexps = explist(ls, &e);
-    if (nexps != nvars) {
-      adjust_assign(ls, nvars, nexps, &e);
-      //if (nexps > nvars)
-      //  ls->fs->freereg -= nexps - nvars;  /* remove extra values */
+  else {
+    BinOpr op = get_compound_opr(ls->t.token);
+    if (op != OPR_NOBINOPR) {
+      int line = ls->linenumber;
+      expdesc v_old;
+      check_condition(ls, nvars == 1, "复合运算不支持多重赋值");
+      v_old = lh->v;
+      luaK_dischargevars(ls->fs, &v_old);
+      luaX_next(ls);
+      expr(ls, &e);
+      luaK_posfix(ls->fs, op, &v_old, &e, line);
+      luaK_storevar(ls->fs, &lh->v, &v_old);
+      return;
     }
-    else {
-      luaK_setoneret(ls->fs, &e);  /* close last expression */
-      luaK_storevar(ls->fs, &lh->v, &e);
-      return;  /* avoid default */
+    else {  /* assignment -> '=' explist */
+      int nexps;
+      checknext(ls, '=');
+      nexps = explist(ls, &e);
+      if (nexps != nvars) {
+        adjust_assign(ls, nvars, nexps, &e);
+      }
+      else {
+        luaK_setoneret(ls->fs, &e);  /* close last expression */
+        luaK_storevar(ls->fs, &lh->v, &e);
+        return;  /* avoid default */
+      }
     }
   }
   init_exp(&e, VNONRELOC, ls->fs->freereg-1);  /* default assignment */
@@ -2008,7 +2039,7 @@ static void exprstat (LexState *ls) {
   FuncState *fs = ls->fs;
   struct LHS_assign v;
   suffixedexp(ls, &v.v);
-  if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
+  if (ls->t.token == '=' || ls->t.token == ',' || get_compound_opr(ls->t.token) != OPR_NOBINOPR) { /* stat -> assignment ? */
     v.prev = NULL;
     assignment(ls, &v, 1);
   }

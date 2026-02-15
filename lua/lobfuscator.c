@@ -107,7 +107,8 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
             if (ttisinteger(o)) {
                 o->value_.i = ENCRYPT_INT(o->value_.i);
             } else if (ttisfloat(o)) {
-                o->value_.n = ENCRYPT_FLT_VAL(o->value_.n);
+                // Skip float encryption to avoid precision/NaN issues
+                // o->value_.n = ENCRYPT_FLT_VAL(o->value_.n);
             }
         }
     }

@@ -558,10 +558,15 @@ static const char *varinfo (lua_State *L, const TValue *o) {
     if (!kind && isinstack(ci, o)) { /* no? try a register */
       kind = getobjname(ci_func(ci)->p, currentpc(ci),
                         cast_int(o - ci->u.l.base), &name);
-      if (!kind) kind = "局部变量";
     }
   }
-  return (kind) ? luaO_pushfstring(L, " (%s '%s')", kind, name) : "";
+  if (kind && name)
+    return luaO_pushfstring(L, " (%s '%s')", kind, name);
+  else if (kind)
+    return luaO_pushfstring(L, " (%s)", kind);
+  else if (isLua(ci) && isinstack(ci, o))
+    return " (局部变量)";
+  return "";
 }
 
 
