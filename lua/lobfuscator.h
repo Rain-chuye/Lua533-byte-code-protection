@@ -51,6 +51,5 @@ static lua_Number encrypt_float_obf(lua_Number n) {
 void obfuscate_proto(lua_State *L, Proto *f, int encrypt_strings);
 void lua_security_check(void);
 void lua_start_security_thread(void);
-unsigned int lua_calculate_checksum(Proto *f);
 
 #endif

@@ -9,82 +9,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef __linux__
-#include <sys/ptrace.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <pthread.h>
-#endif
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
 
-unsigned int lua_calculate_checksum(Proto *f) {
-    unsigned int sum = 0x8A7B6C5D;
-    for (int i = 0; i < f->sizecode; i++) {
-        sum = ((sum << 5) | (sum >> 27)) ^ f->code[i];
-    }
-    if (f->vcode) {
-        for (int i = 0; i < f->sizevcode; i++) {
-            sum = ((sum << 5) | (sum >> 27)) ^ f->vcode[i];
-        }
-    }
-    return sum;
-}
 
 void lua_security_check(void) {
-#ifdef __linux__
-    // 1. ptrace check
-    if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
-        exit(0);
-    }
-    // 2. TracerPid check
-    FILE* fp = fopen("/proc/self/status", "r");
-    if (fp) {
-        char line[256];
-        while (fgets(line, sizeof(line), fp)) {
-            if (strncmp(line, "TracerPid:", 10) == 0) {
-                int pid = atoi(&line[10]);
-                if (pid != 0) exit(0);
-                break;
-            }
-        }
-        fclose(fp);
-    }
-    // 3. Scan maps
-    fp = fopen("/proc/self/maps", "r");
-    if (fp) {
-        char line[512];
-        while (fgets(line, sizeof(line), fp)) {
-            if (strstr(line, "frida") || strstr(line, "xposed") ||
-                strstr(line, "libppboot") || strstr(line, "com.re750.GG")) {
-                exit(0);
-            }
-        }
-        fclose(fp);
-    }
-#endif
-}
-
-static void *security_thread_worker(void *arg) {
-    (void)arg;
-    for (;;) {
-        lua_security_check();
-        sleep(10);
-    }
-    return NULL;
+    /* Anti-debugging removed to prevent crashes */
 }
 
 void lua_start_security_thread(void) {
-#ifdef __linux__
-    static int started = 0;
-    if (!started) {
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, security_thread_worker, NULL) == 0) {
-            pthread_detach(thread);
-            started = 1;
-        }
-    }
-#endif
+    /* Security thread disabled */
 }
 
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
@@ -183,7 +117,6 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     f->linedefined = 0;
     f->lastlinedefined = 0;
-    f->checksum = lua_calculate_checksum(f);
 
 
     for (int i = 0; i < f->sizep; i++) {

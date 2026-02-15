@@ -858,17 +858,6 @@ void luaV_execute (lua_State *L) {
   /* main loop of interpreter */
   for (;;) {
     L_next_ins: {
-#if defined(__ANDROID__) || defined(__linux__)
-      static unsigned int security_counter = 0;
-      if (__builtin_expect(++security_counter >= 1000000, 0)) {
-          // Note: we don't run security_check here anymore as it's in a background thread
-          // but we do check the checksum of the current proto.
-          if (cl->p->checksum != 0 && cl->p->checksum != lua_calculate_checksum(cl->p)) {
-              exit(0);
-          }
-          security_counter = 0;
-      }
-#endif
       Instruction i;
       StkId ra;
       if (__builtin_expect(vpc && vcount > 0, 0)) {
