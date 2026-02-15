@@ -196,8 +196,9 @@ static int str_dump (lua_State *L) {
         return luaL_error(L, "unable to dump given function");
 
     // Convert binary dump to encrypted chunked script
-    size_t len = b.n;
-    const char *data = luaL_resultBuffer(&b);
+    luaL_pushresult(&b);
+    size_t len;
+    const char *data = lua_tolstring(L, -1, &len);
     char *script = luaL_encrypt_chuye_script((const unsigned char *)data, len);
     lua_pushstring(L, script);
     free(script);
@@ -1667,7 +1668,7 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
     int total = (int)((len + chunk_size - 1) / chunk_size);
     if (total == 0) total = 1;
 
-    size_t out_capacity = (len * 3) + 4096; // Plenty of space for script boilerplate
+    size_t out_capacity = (len * 4) + 8192;
     char *script = (char *)malloc(out_capacity);
     // \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6 -> 初叶定制
     int written = sprintf(script, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
@@ -1677,9 +1678,9 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
         size_t current_chunk_len = (len - offset < chunk_size) ? (len - offset) : chunk_size;
         char *encoded = luaL_encrypt_chuye(input + offset, current_chunk_len, whole_crc, total, i);
         if (i == total)
-            written += sprintf(script + written, "return load(\"%s\")\n", encoded);
+            written += sprintf(script + written, "return load(\"%s\")()\n", encoded);
         else
-            written += sprintf(script + written, "load(\"%s\")\n", encoded);
+            written += sprintf(script + written, "load(\"%s\")()\n", encoded);
         free(encoded);
     }
     return script;

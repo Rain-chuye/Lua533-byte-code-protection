@@ -596,16 +596,6 @@ LUALIB_API void luaL_pushresult (luaL_Buffer *B) {
   }
 }
 
-LUALIB_API const char *luaL_resultBuffer (luaL_Buffer *B) {
-    lua_State *L = B->L;
-    const char *res = lua_pushlstring(L, B->b, B->n);
-    if (buffonstack(B)) {
-        resizebox(L, -2, 0);  /* delete old buffer */
-        lua_remove(L, -2);  /* remove its header from the stack */
-    }
-    lua_pop(L,1);
-    return res;
-}
 
 LUALIB_API void luaL_pushresultsize (luaL_Buffer *B, size_t sz) {
   luaL_addsize(B, sz);
@@ -766,8 +756,8 @@ static const char *read_all (lua_State *L, FILE *f, size_t *len) {
         nr = fread(p, sizeof(char), LUAL_BUFFERSIZE, f);
         luaL_addsize(&b, nr);
     } while (nr == LUAL_BUFFERSIZE);
-    *len=b.n;
-    return luaL_resultBuffer(&b);
+    luaL_pushresult(&b);
+    return lua_tolstring(L, -1, len);
 }
 
 
