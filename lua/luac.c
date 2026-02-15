@@ -206,8 +206,8 @@ static int pmain(lua_State* L)
   luaU_dump(L, f, mem_writer, &mw, stripping);
   lua_unlock(L);
 
-  char *encoded = luaL_encrypt_chuye((const unsigned char *)mw.data, mw.len);
-  fprintf(D, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\nload(\"%s\")()", encoded);
+  char *encoded = luaL_encrypt_chuye_script((const unsigned char *)mw.data, mw.len);
+  fprintf(D, "%s", encoded);
 
   free(encoded);
   free(mw.data);

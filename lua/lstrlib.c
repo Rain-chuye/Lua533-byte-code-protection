@@ -191,10 +191,16 @@ static int str_dump (lua_State *L) {
     int strip = lua_toboolean(L, 2);
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_settop(L, 1);
-    luaL_buffinit(L,&b);
+    luaL_buffinit(L, &b);
     if (lua_dump(L, writer, &b, strip) != 0)
         return luaL_error(L, "unable to dump given function");
-    luaL_pushresult(&b);
+
+    // Convert binary dump to encrypted chunked script
+    size_t len = b.n;
+    const char *data = luaL_resultBuffer(&b);
+    char *script = luaL_encrypt_chuye_script((const unsigned char *)data, len);
+    lua_pushstring(L, script);
+    free(script);
     return 1;
 }
 
@@ -1603,15 +1609,20 @@ static int str_unpack (lua_State *L) {
 
 static const char B64_ALPHABET_CHUYE[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len) {
-    unsigned int crc = luaL_crc32(input, len);
-    size_t data_len = len + 4;
+LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsigned int whole_crc, int total, int index) {
+    // Header (12 bytes): 'CHYE' (4) | WholeCRC (4) | Total (2) | Index (2)
+    size_t data_len = len + 12;
     unsigned char *data = (unsigned char *)malloc(data_len);
-    data[0] = (crc >> 24) & 0xFF;
-    data[1] = (crc >> 16) & 0xFF;
-    data[2] = (crc >> 8) & 0xFF;
-    data[3] = crc & 0xFF;
-    memcpy(data + 4, input, len);
+    data[0] = 'C'; data[1] = 'H'; data[2] = 'Y'; data[3] = 'E';
+    data[4] = (whole_crc >> 24) & 0xFF;
+    data[5] = (whole_crc >> 16) & 0xFF;
+    data[6] = (whole_crc >> 8) & 0xFF;
+    data[7] = whole_crc & 0xFF;
+    data[8] = (total >> 8) & 0xFF;
+    data[9] = total & 0xFF;
+    data[10] = (index >> 8) & 0xFF;
+    data[11] = index & 0xFF;
+    memcpy(data + 12, input, len);
 
     size_t out_capacity = (data_len * 2) + 256;
     char *output = (char *)malloc(out_capacity);
@@ -1650,10 +1661,34 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len) {
     return output;
 }
 
+LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t len) {
+    unsigned int whole_crc = luaL_crc32(input, len);
+    size_t chunk_size = 128;
+    int total = (int)((len + chunk_size - 1) / chunk_size);
+    if (total == 0) total = 1;
+
+    size_t out_capacity = (len * 3) + 4096; // Plenty of space for script boilerplate
+    char *script = (char *)malloc(out_capacity);
+    // \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6 -> 初叶定制
+    int written = sprintf(script, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
+
+    for (int i = 1; i <= total; i++) {
+        size_t offset = (i - 1) * chunk_size;
+        size_t current_chunk_len = (len - offset < chunk_size) ? (len - offset) : chunk_size;
+        char *encoded = luaL_encrypt_chuye(input + offset, current_chunk_len, whole_crc, total, i);
+        if (i == total)
+            written += sprintf(script + written, "return load(\"%s\")\n", encoded);
+        else
+            written += sprintf(script + written, "load(\"%s\")\n", encoded);
+        free(encoded);
+    }
+    return script;
+}
+
 static int str_encrypt(lua_State *L) {
     size_t len;
     const char *s = luaL_checklstring(L, 1, &len);
-    char *res = luaL_encrypt_chuye((const unsigned char *)s, len);
+    char *res = luaL_encrypt_chuye_script((const unsigned char *)s, len);
     lua_pushstring(L, res);
     free(res);
     return 1;
