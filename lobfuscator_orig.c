@@ -21,11 +21,11 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
     for (int i = 0; i < old_sizecode; i++) {
         Instruction inst = f->code[i];
         OpCode op = GET_OPCODE(inst);
-        if (op == OP_JMP || op == OP_FORLOOP || op == OP_FORPREP || op == OP_TFORLOOP || op == OP_TERNARY) {
+        if (op == OP_JMP || op == OP_FORLOOP || op == OP_FORPREP || op == OP_TFORLOOP) {
             int target = i + 1 + GETARG_sBx(inst);
             if (target >= 0 && target < old_sizecode) is_target[target] = 1;
         }
-        if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET || op == OP_TFORCALL || op == OP_TERNARY) {
+        if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET || op == OP_TFORCALL) {
             if (i + 1 < old_sizecode) is_target[i + 1] = 1;
         }
         if (op == OP_LOADKX || op == OP_SETLIST) {

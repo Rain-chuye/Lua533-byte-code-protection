@@ -1,0 +1,1 @@
+987:        ls->fs->freereg = ls->fs->nactvar;  /* free registers */

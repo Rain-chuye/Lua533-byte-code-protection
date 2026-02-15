@@ -80,7 +80,7 @@ static l_noret semerror (LexState *ls, const char *msg) {
 
 static l_noret error_expected (LexState *ls, int token) {
   luaX_syntaxerror(ls,
-      luaO_pushfstring(ls->L, "期望 %s", luaX_token2str(ls, token)));
+      luaO_pushfstring(ls->L, "%s expected", luaX_token2str(ls, token)));
 }
 
 
@@ -89,9 +89,9 @@ static l_noret errorlimit (FuncState *fs, int limit, const char *what) {
   const char *msg;
   int line = fs->f->linedefined;
   const char *where = (line == 0)
-                      ? "主函数"
-                      : luaO_pushfstring(L, "第 %d 行的函数", line);
-  msg = luaO_pushfstring(L, "%s 太多 (限制为 %d)，在 %s 中",
+                      ? "main function"
+                      : luaO_pushfstring(L, "function at line %d", line);
+  msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
                              what, limit, where);
   luaX_syntaxerror(fs->ls, msg);
 }
@@ -148,8 +148,8 @@ static void check_match (LexState *ls, int what, int who, int where) {
       error_expected(ls, what);
     else {
       luaX_syntaxerror(ls, luaO_pushfstring(ls->L,
-             "期望 %s (用来在第 %d 行关闭 %s)",
-              luaX_token2str(ls, what), where, luaX_token2str(ls, who)));
+             "%s expected (to close %s at line %d)",
+              luaX_token2str(ls, what), luaX_token2str(ls, who), where));
     }
   }
 }
@@ -374,8 +374,8 @@ static void closegoto (LexState *ls, int g, Labeldesc *label) {
   if (gt->nactvar < label->nactvar) {
     TString *vname = getlocvar(fs, gt->nactvar)->varname;
     const char *msg = luaO_pushfstring(ls->L,
-      "第 %d 行的 <goto %s> 跳入了局部变量 '%s' 的作用域",
-      gt->line, getstr(gt->name), getstr(vname));
+      "<goto %s> at line %d jumps into the scope of local '%s'",
+      getstr(gt->name), gt->line, getstr(vname));
     semerror(ls, msg);
   }
   luaK_patchlist(fs, gt->pc, label->pc);
@@ -496,8 +496,8 @@ static void continuelabel (LexState *ls) {
 */
 static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
   const char *msg = isreserved(gt->name)
-                    ? "第 %2$d 行的 <%1$s> 不在循环内"
-                    : "第 %2$d 行的 <goto> 没有可见的标签 '%1$s'";
+                    ? "<%s> at line %d not inside a loop"
+                    : "no visible label '%s' for <goto> at line %d";
   msg = luaO_pushfstring(ls->L, msg, getstr(gt->name), gt->line);
   semerror(ls, msg);
 }
@@ -639,11 +639,6 @@ static void statlist (LexState *ls) {
     }
     statement(ls);
   }
-}
-
-
-static int is_funcarg (int token) {
-  return (token == '(' || token == '{' || token == TK_STRING);
 }
 
 
@@ -886,10 +881,10 @@ static void parlist (LexState *ls) {
         }
         case TK_DOTS: {  /* param -> '...' */
           luaX_next(ls);
-          f->is_vararg = 1;  /* declared vararg */
+          f->is_vararg = 2;  /* declared vararg */
           break;
         }
-        default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
+        default: luaX_syntaxerror(ls, "<name> or '...' expected");
       }
     } while (!f->is_vararg && testnext(ls, ','));
   }
@@ -919,6 +914,12 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   //parlist(ls);
   //checknext(ls, ')');
   b=testnext(ls, '{');
+
+  new_localvar(ls, ls->envn);
+  expdesc env;
+  singlevaraux(ls->fs, ls->envn, &env, 1);
+  adjust_assign(ls, 1, 1, &env);
+  adjustlocalvars(ls, 1);
 
   statlist(ls);
   new_fs.f->lastlinedefined = ls->linenumber;
@@ -955,7 +956,7 @@ static void lambda_parlist(LexState *ls) {
                     f->is_vararg = 1;
                     break;
                 }
-                default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
+                default: luaX_syntaxerror(ls, "<name> or '...' expected");
             }
         } while (!f->is_vararg && testnext(ls, ','));
     }
@@ -976,6 +977,9 @@ static void lambda_body(LexState *ls, expdesc *e, int line) {
     if (testnext(ls, TK_LET)||testnext(ls, ':')) {
         enterlevel(ls);
         retstat(ls);
+        lua_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
+                   ls->fs->freereg >= ls->fs->nactvar);
+        ls->fs->freereg = ls->fs->nactvar;  /* free registers */
         leavelevel(ls);
     } else {
         testnext(ls, TK_MEAN);
@@ -1025,7 +1029,7 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       break;
     }
     default: {
-      luaX_syntaxerror(ls, "期望函数参数");
+      luaX_syntaxerror(ls, "function arguments expected");
     }
   }
   lua_assert(f->k == VNONRELOC);
@@ -1069,7 +1073,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
-      luaX_syntaxerror(ls, "未预料的符号");
+      luaX_syntaxerror(ls, "unexpected symbol");
     }
   }
 }
@@ -1095,8 +1099,6 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         break;
       }
       case ':': {  /* ':' NAME funcargs */
-        if (luaX_lookahead(ls) != TK_NAME || !is_funcarg(luaX_lookahead2(ls)))
-          return;
         expdesc key;
         luaX_next(ls);
         checkname(ls, &key);
@@ -1148,7 +1150,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
     case TK_DOTS: {  /* vararg */
       FuncState *fs = ls->fs;
       check_condition(ls, fs->f->is_vararg,
-                      "不能在可变参数函数之外使用 '...' ");
+                      "cannot use '...' outside a vararg function");
       fs->f->is_vararg = 1;  /* function actually uses vararg */
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 1, 0));
       break;
@@ -1272,32 +1274,8 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
 }
 
 
-static void ternaryexp (LexState *ls, expdesc *v) {
-  FuncState *fs = ls->fs;
-  expdesc v2, v3;
-  int jf, jl;
-  int reg;
-  luaK_exp2nextreg(fs, v);
-  reg = v->u.info;
-  jf = luaK_codeAsBx(fs, OP_TERNARY, reg, NO_JUMP);
-  expr(ls, &v2);
-  checknext(ls, ':');
-  luaK_exp2reg(fs, &v2, reg);
-  jl = luaK_jump(fs);
-  luaK_patchtohere(fs, jf);
-  expr(ls, &v3);
-  luaK_exp2reg(fs, &v3, reg);
-  luaK_patchtohere(fs, jl);
-  v->k = VNONRELOC;
-  v->u.info = reg;
-}
-
-
 static void expr (LexState *ls, expdesc *v) {
   subexpr(ls, v, 0);
-  if (testnext(ls, '?')) {
-    ternaryexp(ls, v);
-  }
 }
 
 /* }==================================================================== */
@@ -1367,7 +1345,7 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
 
 static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
-  check_condition(ls, vkisvar(lh->v.k), "语法错误");
+  check_condition(ls, vkisvar(lh->v.k), "syntax error");
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
@@ -1431,7 +1409,7 @@ static void checkrepeated (FuncState *fs, Labellist *ll, TString *label) {
   for (i = fs->bl->firstlabel; i < ll->n; i++) {
     if (eqstr(label, ll->arr[i].name)) {
       const char *msg = luaO_pushfstring(fs->ls->L,
-                          "标签 '%s' 已在第 %d 行定义",
+                          "label '%s' already defined on line %d",
                           getstr(label), ll->arr[i].line);
       semerror(fs->ls, msg);
     }
@@ -1657,7 +1635,8 @@ static void test_then_block (LexState *ls, int *escapelist) {
       return;  /* and that is it */
     }
     else  /* must skip over 'then' part if condition is false */
-      luaX_syntaxerror(ls, "不可达的语句");
+      //jf = luaK_jump(fs);
+      luaX_syntaxerror(ls, "unreachable statement");
   }
   else {  /* regular case (not goto/break) */
     luaK_goiftrue(ls->fs, &v);  /* skip over block if condition is false */
@@ -1976,7 +1955,7 @@ static void exprstat (LexState *ls) {
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */
-    check_condition(ls, v.v.k == VCALL, "语法错误");
+    check_condition(ls, v.v.k == VCALL, "syntax error");
     SETARG_C(getinstruction(fs, &v.v), 1);  /* call statement uses no results */
   }
 }
@@ -2088,7 +2067,7 @@ static void statement (LexState *ls) {
       gotostat(ls, luaK_jump(ls->fs));
       while (testnext(ls, ';')) {}  /* skip semicolons */
       if (!block_follow(ls, 1))
-        luaX_syntaxerror(ls, "不可达的语句");
+        luaX_syntaxerror(ls, "unreachable statement");
       break;
     }
     case TK_GOTO: {  /* stat -> 'goto' NAME */
@@ -2100,6 +2079,9 @@ static void statement (LexState *ls) {
       break;
     }
   }
+  lua_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
+             ls->fs->freereg >= ls->fs->nactvar);
+  ls->fs->freereg = ls->fs->nactvar;  /* free registers */
   leavelevel(ls);
 }
 
@@ -2114,9 +2096,14 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
-  fs->f->is_vararg = 1;  /* main function is always vararg */
+  fs->f->is_vararg = 2;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
+  new_localvar(ls, ls->envn);
+  expdesc env;
+  singlevaraux(ls->fs, ls->envn, &env, 1);
+  adjust_assign(ls, 1, 1, &env);
+  adjustlocalvars(ls, 1);
   luaX_next(ls);  /* read first token */
   if(ls->t.token==TK_STRING||ls->t.token=='{')
     retstat(ls);
