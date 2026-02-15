@@ -206,7 +206,7 @@ static int pmain(lua_State* L)
   lua_unlock(L);
 
   char *encoded = lua_encode_variant_base64((const unsigned char *)mw.data, mw.len);
-  fprintf(D, "XIAO\nload(\"%s\")()\n", encoded);
+  fprintf(D, "load(\"%s\")()", encoded);
 
   free(encoded);
   free(mw.data);
