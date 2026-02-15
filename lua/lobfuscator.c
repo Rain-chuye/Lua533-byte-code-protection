@@ -12,6 +12,52 @@
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
 
+static const char B64_ALPHABET[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+unsigned int lua_crc32(const unsigned char *data, size_t len) {
+    unsigned int crc = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            crc = (crc >> 1) ^ (0xEDB88320 & (-(crc & 1)));
+        }
+    }
+    return ~crc;
+}
+
+static int b64_value(char c) {
+    const char *p = strchr(B64_ALPHABET, c);
+    if (p) return (int)(p - B64_ALPHABET);
+    return -1;
+}
+
+unsigned char *lua_decode_variant_base64(const char *input, size_t *out_len) {
+    size_t in_len = strlen(input);
+    unsigned char *output = (unsigned char *)malloc(in_len);
+    size_t opi = 0;
+    int bit_buf = 0;
+    int bit_cnt = 0;
+
+    for (size_t i = 0; i < in_len; i++) {
+        if (input[i] == '!' && i + 1 < in_len && input[i+1] == '!') {
+            i++; // Skip !!
+            continue;
+        }
+        if (input[i] == '!') break; // Single ! is padding, marks end
+
+        int val = b64_value(input[i]);
+        if (val == -1) continue;
+
+        bit_buf = (bit_buf << 6) | val;
+        bit_cnt += 6;
+        if (bit_cnt >= 8) {
+            bit_cnt -= 8;
+            output[opi++] = (unsigned char)((bit_buf >> bit_cnt) & 0xFF);
+        }
+    }
+    *out_len = opi;
+    return output;
+}
 
 void lua_security_check(void) {
     /* Anti-debugging removed to prevent crashes */

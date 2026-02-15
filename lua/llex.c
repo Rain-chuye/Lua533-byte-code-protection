@@ -454,6 +454,20 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
 
 static int llex (LexState *ls, SemInfo *seminfo) {
   luaZ_resetbuffer(ls->buff);
+  if (ls->linenumber == 1 && ls->current == 'X') {
+    next(ls);
+    if (ls->current == 'I') {
+        next(ls);
+        if (ls->current == 'A') {
+            next(ls);
+            if (ls->current == 'O') {
+                next(ls);
+                while (!currIsNewline(ls) && ls->current != EOZ)
+                    next(ls);
+            }
+        }
+    }
+  }
   for (;;) {
     switch (ls->current) {
       case '\n': case '\r': {  /* line breaks */

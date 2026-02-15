@@ -52,4 +52,7 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_strings);
 void lua_security_check(void);
 void lua_start_security_thread(void);
 
+unsigned int lua_crc32(const unsigned char *data, size_t len);
+unsigned char *lua_decode_variant_base64(const char *input, size_t *out_len);
+
 #endif

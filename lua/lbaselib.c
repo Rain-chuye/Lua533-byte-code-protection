@@ -19,6 +19,7 @@
 
 #include "lauxlib.h"
 #include "lualib.h"
+#include "lobfuscator.h"
 
 
 #ifdef __ANDROID__
@@ -403,6 +404,23 @@ static int luaB_load (lua_State *L) {
   int env = (!lua_isnone(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
   if (s != NULL) {  /* loading a string? */
     const char *chunkname = luaL_optstring(L, 2, s);
+    if (strstr(s, "!!")) {
+        size_t decoded_len;
+        unsigned char *decoded = lua_decode_variant_base64(s, &decoded_len);
+        if (decoded && decoded_len >= 4) {
+            unsigned int expected_crc = ((unsigned int)decoded[0] << 24) |
+                                        ((unsigned int)decoded[1] << 16) |
+                                        ((unsigned int)decoded[2] << 8) |
+                                        ((unsigned int)decoded[3]);
+            unsigned int actual_crc = lua_crc32(decoded + 4, decoded_len - 4);
+            if (actual_crc == expected_crc) {
+                status = luaL_loadbufferx(L, (const char *)(decoded + 4), decoded_len - 4, chunkname, mode);
+                free(decoded);
+                return load_aux(L, status, env);
+            }
+        }
+        if (decoded) free(decoded);
+    }
     status = luaL_loadbufferx(L, s, l, chunkname, mode);
   }
   else {  /* loading from a reader function */

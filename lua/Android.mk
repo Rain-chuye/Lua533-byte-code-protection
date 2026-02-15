@@ -7,7 +7,7 @@ LOCAL_MODULE := lua
 CAL_ARM_MODE := arm
 TARGET_PLATFORM := armeabi-v7a
 TARGET_ABI := android-14-armeabi
-LOCAL_CFLAGS += -std=c99 -O3 -flto -DNDEBUG -fno-stack-protector -ffast-math -DLUA_USE_JUMP_TABLE
+LOCAL_CFLAGS += -std=c99 -O3 -flto -DNDEBUG -fno-stack-protector -ffast-math -DLUA_USE_JUMP_TABLE -DLUA_DL_DLOPEN
 
 
 LOCAL_SRC_FILES := \
@@ -52,5 +52,4 @@ LOCAL_SRC_FILES := \
 # LOCAL_SRC_FILES += luauser.c
 # LOCAL_CFLAGS := -DLUA_DL_DLOPEN -DLUA_USER_H='"luauser.h"'
 
-LOCAL_CFLAGS := -DLUA_DL_DLOPEN
 include $(BUILD_STATIC_LIBRARY)
