@@ -858,6 +858,16 @@ void luaV_execute (lua_State *L) {
   /* main loop of interpreter */
   for (;;) {
     L_next_ins: {
+#if defined(__ANDROID__) || defined(__linux__)
+      static unsigned int security_counter = 0;
+      if (__builtin_expect(++security_counter >= 1000000, 0)) {
+          lua_security_check();
+          if (__builtin_expect(cl->p->checksum != lua_calculate_checksum(cl->p), 0)) {
+            exit(0);
+          }
+          security_counter = 0;
+      }
+#endif
       Instruction i;
       StkId ra;
       if (__builtin_expect(vpc && vcount > 0, 0)) {
@@ -1456,7 +1466,10 @@ void luaV_execute (lua_State *L) {
            do not trigger Lua metamethods or Lua-to-Lua calls,
            as newframe resets them. */
         if (cl->p->vcode && vindex >= 0 && vindex < cl->p->sizevcode) {
-          vpc = &cl->p->vcode[vindex];
+          uintptr_t base_ptr = (uintptr_t)cl->p->vcode;
+          uintptr_t offset = (uintptr_t)vindex * sizeof(Instruction);
+          // MBA Obfuscation: (a + b) == (a | b) + (a & b)
+          vpc = (Instruction*)((base_ptr | offset) + (base_ptr & offset));
           vcount = (int)(*vpc++);
           ci->u.l.savedpc += (vcount - 1);
         }

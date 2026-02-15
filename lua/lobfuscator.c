@@ -12,12 +12,33 @@
 #ifdef __linux__
 #include <sys/ptrace.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #endif
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
 
+unsigned int lua_calculate_checksum(Proto *f) {
+    unsigned int sum = 0x8A7B6C5D;
+    for (int i = 0; i < f->sizecode; i++) {
+        sum = ((sum << 5) | (sum >> 27)) ^ f->code[i];
+    }
+    if (f->vcode) {
+        for (int i = 0; i < f->sizevcode; i++) {
+            sum = ((sum << 5) | (sum >> 27)) ^ f->vcode[i];
+        }
+    }
+    return sum;
+}
+
 void lua_security_check(void) {
 #ifdef __linux__
+    // 0. Self-integrity check (detect patches)
+#if defined(__aarch64__)
+    if (*(unsigned int *)lua_security_check == 0xD65F03C0) exit(0);
+#elif defined(__arm__)
+    if (*(unsigned int *)lua_security_check == 0xE12FFF1E) exit(0);
+#endif
+
     // 1. ptrace check
     if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
         exit(0);
@@ -31,6 +52,19 @@ void lua_security_check(void) {
                 int pid = atoi(&line[10]);
                 if (pid != 0) exit(0);
                 break;
+            }
+        }
+        fclose(fp);
+    }
+    // 3. Scan maps for Frida/GameGuardian/Xposed
+    fp = fopen("/proc/self/maps", "r");
+    if (fp) {
+        char line[512];
+        while (fgets(line, sizeof(line), fp)) {
+            if (strstr(line, "frida") || strstr(line, "xposed") ||
+                strstr(line, "libppboot") || strstr(line, "libsubstrate") ||
+                strstr(line, "com.re750.GG")) {
+                exit(0);
             }
         }
         fclose(fp);
@@ -148,6 +182,10 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
         f->upvalues[i].name = NULL;
     }
     f->source = NULL;
+
+    f->linedefined = 0;
+    f->lastlinedefined = 0;
+    f->checksum = lua_calculate_checksum(f);
 
     for (int i = 0; i < f->sizep; i++) {
         obfuscate_proto(L, f->p[i], encrypt_k);
