@@ -45,9 +45,8 @@ static int b64_value(char c) {
     return -1;
 }
 
-LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t *out_len) {
-    size_t in_len = strlen(input);
-    unsigned char *output = (unsigned char *)malloc(in_len);
+LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, size_t *out_len) {
+    unsigned char *output = (unsigned char *)malloc(in_len + 1);
     size_t opi = 0;
     int bit_buf = 0;
     int bit_cnt = 0;
@@ -71,6 +70,41 @@ LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t *out_len)
     }
     *out_len = opi;
     return output;
+}
+
+LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char *src, size_t len, size_t *outlen) {
+    size_t decoded_len;
+    unsigned char *decoded = luaL_decrypt_chuye(src, len, &decoded_len);
+    if (!decoded || decoded_len < 12) {
+        if (decoded) free(decoded);
+        return NULL;
+    }
+
+    if (memcmp(decoded, "CHYE", 4) != 0) {
+        free(decoded);
+        return NULL;
+    }
+
+    // Header check (optional: CRC verification could be done here)
+    // uint32_t expected_crc = (decoded[4] << 24) | (decoded[5] << 16) | (decoded[6] << 8) | decoded[7];
+
+    size_t data_len = decoded_len - 12;
+    unsigned char *data = (unsigned char *)malloc(data_len);
+    if (!data) {
+        free(decoded);
+        return NULL;
+    }
+
+    memcpy(data, decoded + 12, data_len);
+    free(decoded);
+
+    // Decryption XOR (matches lstrlib.c)
+    for (size_t i = 0; i < data_len; i++) {
+        data[i] ^= 0x77;
+    }
+
+    *outlen = data_len;
+    return data;
 }
 
 

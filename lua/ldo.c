@@ -13,9 +13,11 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "lua.h"
 
+#include "lauxlib.h"
 #include "lobfuscator.h"
 #include "lapi.h"
 #include "ldebug.h"
@@ -201,7 +203,7 @@ void luaD_growstack (lua_State *L, int n) {
     if (newsize < needed) newsize = needed;
     if (newsize > LUAI_MAXSTACK) {  /* stack overflow? */
       luaD_reallocstack(L, ERRORSTACKSIZE);
-      luaG_runerror(L, "stack overflow");
+    luaG_runerror(L, "栈溢出");
     }
     else
       luaD_reallocstack(L, newsize);
@@ -479,7 +481,7 @@ int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
 */
 static void stackerror (lua_State *L) {
   if (L->nCcalls == LUAI_MAXCCALLS)
-    luaG_runerror(L, "C stack overflow");
+    luaG_runerror(L, "C 栈溢出");
   else if (L->nCcalls >= (LUAI_MAXCCALLS + (LUAI_MAXCCALLS>>3)))
     luaD_throw(L, LUA_ERRERR);  /* error while handing stack error */
 }
@@ -697,9 +699,9 @@ LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
   api_checknelems(L, nresults);
   if (L->nny > 0) {
     if (L != G(L)->mainthread)
-      luaG_runerror(L, "attempt to yield across a C-call boundary");
+      luaG_runerror(L, "尝试跨越 C 调用边界 yield");
     else
-      luaG_runerror(L, "attempt to yield from outside a coroutine");
+      luaG_runerror(L, "尝试在协程外 yield");
   }
   L->status = LUA_YIELD;
   ci->extra = savestack(L, ci->func);  /* save current 'func' */
@@ -763,10 +765,66 @@ static void checkmode (lua_State *L, const char *mode, const char *x) {
 }
 
 
+typedef struct {
+  const char *s;
+  size_t size;
+} MemState;
+
+static const char *getM (lua_State *L, void *ud, size_t *size) {
+  MemState *ms = (MemState *)ud;
+  UNUSED(L);
+  if (ms->size == 0) return NULL;
+  *size = ms->size;
+  ms->size = 0;
+  return ms->s;
+}
+
 static void f_parser (lua_State *L, void *ud) {
-  LClosure *cl;
+  LClosure *cl = NULL;
   struct SParser *p = cast(struct SParser *, ud);
   int c = zgetc(p->z);  /* read first character */
+
+  if (c == 0xE5) { /* UTF-8 for '初' */
+    char sig[13];
+    sig[0] = (char)c;
+    int i;
+    for (i = 1; i < 12; i++) sig[i] = (char)zgetc(p->z);
+    sig[12] = '\0';
+    if (memcmp(sig, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6", 12) == 0) {
+      luaL_Buffer b;
+      luaL_buffinit(L, &b);
+      while ((c = zgetc(p->z)) != EOF) luaL_addchar(&b, c);
+      luaL_pushresult(&b);
+      size_t elen;
+      const char *encoded = lua_tolstring(L, -1, &elen);
+      size_t dlen;
+      unsigned char *decoded_raw = luaL_chuye_decode_and_decrypt(L, encoded, elen, &dlen);
+      if (decoded_raw) {
+        void *decoded = lua_newuserdata(L, dlen);
+        memcpy(decoded, decoded_raw, dlen);
+        free(decoded_raw);
+        ZIO mz;
+        MemState ms;
+        ms.s = (const char *)decoded;
+        ms.size = dlen;
+        luaZ_init(L, &mz, getM, &ms);
+        if (zgetc(&mz) != 0x1b) luaG_runerror(L, "解密后的脚本格式错误");
+        cl = luaU_undump(L, &mz, p->name);
+        lua_insert(L, -3);
+        lua_pop(L, 2); /* remove encoded string and userdata */
+        goto done;
+      }
+      lua_pop(L, 1); /* remove encoded string */
+      // If we failed to decode/decrypt, we already consumed the signature.
+      // But this is an error case for a file starting with our signature.
+      luaG_runerror(L, "无法解析加密脚本");
+    } else {
+        // Not our signature, but we consumed 12 bytes.
+        // In practice, this shouldn't happen for valid scripts.
+        luaG_runerror(L, "损坏的脚本签名");
+    }
+  }
+
   if (c == LUA_SIGNATURE[0]) {
     checkmode(L, p->mode, "binary");
     cl = luaU_undump(L, p->z, p->name);
@@ -775,6 +833,8 @@ static void f_parser (lua_State *L, void *ud) {
     checkmode(L, p->mode, "text");
     cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
   }
+
+done:
   obfuscate_proto(L, cl->p, 0);
   lua_assert(cl->nupvalues == cl->p->sizeupvalues);
   luaF_initupvals(L, cl);

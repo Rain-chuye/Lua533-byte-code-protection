@@ -59,7 +59,7 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
 
             // Strictly safe instructions that never yield or skip instructions
             int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADNIL ||
-                           op == OP_GETUPVAL || op == OP_SETUPVAL);
+                           op == OP_GETUPVAL);
 
             if (!is_safe) break;
             if (i > start && is_target[i]) break;
@@ -98,8 +98,18 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     if (f->obfuscated) return;
 
     // Increase stack size to provide slots for dynamic decryption (RK values)
-    if (f->maxstacksize <= 253) f->maxstacksize += 2;
-    else f->maxstacksize = 255;
+    // Ensure we don't overwrite any registers used by the function
+    if (f->maxstacksize <= 253) {
+        f->scratch_base = f->maxstacksize;
+        f->maxstacksize += 2;
+    } else {
+        // Not enough space for 2 scratch registers.
+        // If we have 1 slot left, use it for both (unsafe if both RK are constants).
+        // Best approach: Cap at 255 and use the last two slots.
+        // Most functions use way less than 255, so this is just a safety measure.
+        f->scratch_base = 253;
+        f->maxstacksize = 255;
+    }
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {

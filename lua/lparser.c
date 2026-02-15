@@ -902,6 +902,11 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   new_fs.f = addprototype(ls);
   new_fs.f->linedefined = line;
   open_func(ls, &new_fs, &bl);
+  new_localvar(ls, ls->envn);
+  expdesc env;
+  singlevaraux(ls->fs, ls->envn, &env, 1);
+  adjust_assign(ls, 1, 1, &env);
+  adjustlocalvars(ls, 1);
   int b=testnext(ls, '(');
   //checknext(ls, '(');
   if (ismethod) {
@@ -916,11 +921,6 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   //checknext(ls, ')');
   b=testnext(ls, '{');
 
-  new_localvar(ls, ls->envn);
-  expdesc env;
-  singlevaraux(ls->fs, ls->envn, &env, 1);
-  adjust_assign(ls, 1, 1, &env);
-  adjustlocalvars(ls, 1);
 
   statlist(ls);
   new_fs.f->lastlinedefined = ls->linenumber;

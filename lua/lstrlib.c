@@ -1625,6 +1625,11 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
     data[11] = index & 0xFF;
     memcpy(data + 12, input, len);
 
+    // Encrypt payload
+    for (size_t i = 12; i < data_len; i++) {
+        data[i] ^= 0x77;
+    }
+
     size_t out_capacity = (data_len * 2) + 256;
     char *output = (char *)malloc(out_capacity);
     size_t opi = 0;
@@ -1664,25 +1669,13 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
 
 LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t len) {
     unsigned int whole_crc = luaL_crc32(input, len);
-    size_t chunk_size = 128;
-    int total = (int)((len + chunk_size - 1) / chunk_size);
-    if (total == 0) total = 1;
+    char *encoded = luaL_encrypt_chuye(input, len, whole_crc, 1, 1);
 
-    size_t out_capacity = (len * 4) + 8192;
+    size_t out_capacity = strlen(encoded) + 64;
     char *script = (char *)malloc(out_capacity);
     // \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6 -> 初叶定制
-    int written = sprintf(script, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
-
-    for (int i = 1; i <= total; i++) {
-        size_t offset = (i - 1) * chunk_size;
-        size_t current_chunk_len = (len - offset < chunk_size) ? (len - offset) : chunk_size;
-        char *encoded = luaL_encrypt_chuye(input + offset, current_chunk_len, whole_crc, total, i);
-        if (i == total)
-            written += sprintf(script + written, "return load(\"%s\")()\n", encoded);
-        else
-            written += sprintf(script + written, "load(\"%s\")()\n", encoded);
-        free(encoded);
-    }
+    sprintf(script, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n%s", encoded);
+    free(encoded);
     return script;
 }
 

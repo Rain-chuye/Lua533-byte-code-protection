@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/stat.h>
 
 #include "lua.h"
@@ -543,49 +544,49 @@ static int read_chars (lua_State *L, FILE *f, size_t n) {
 
 static int read_int (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  int32_t *p = malloc(sizeof(int32_t));
-  nr = fread(p, sizeof(int32_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  int32_t p;
+  nr = fread(&p, sizeof(int32_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 
 static int read_uint (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  uint32_t *p = malloc(sizeof(uint32_t));
-  nr = fread(p, sizeof(uint32_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  uint32_t p;
+  nr = fread(&p, sizeof(uint32_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 
 static int read_int16 (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  int16_t *p = malloc(sizeof(int16_t));
-  nr = fread(p, sizeof(int16_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  int16_t p;
+  nr = fread(&p, sizeof(int16_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 
 static int read_uint16 (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  uint16_t *p = malloc(sizeof(uint16_t));
-  nr = fread(p, sizeof(uint16_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  uint16_t p;
+  nr = fread(&p, sizeof(uint16_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 
 static int read_int8 (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  int8_t *p = malloc(sizeof(int8_t));
-  nr = fread(p, sizeof(int8_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  int8_t p;
+  nr = fread(&p, sizeof(int8_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 
 static int read_uint8 (lua_State *L, FILE *f) {
   size_t nr;  /* number of chars actually read */
-  uint8_t *p = malloc(sizeof(uint8_t));
-  nr = fread(p, sizeof(uint8_t), 1, f);  /* try to read 'n' chars */
-  lua_pushinteger(L,*p);
+  uint8_t p;
+  nr = fread(&p, sizeof(uint8_t), 1, f);  /* try to read 'n' chars */
+  lua_pushinteger(L, p);
   return (nr > 0);  /* true iff read something */
 }
 

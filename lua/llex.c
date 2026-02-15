@@ -454,23 +454,6 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
 
 static int llex (LexState *ls, SemInfo *seminfo) {
   luaZ_resetbuffer(ls->buff);
-  if (ls->linenumber == 1 && (unsigned char)ls->current == 0xE5) {
-      // UTF-8 check for "初叶定制" (\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6)
-      const unsigned char sig[] = {0xE5, 0x88, 0x9D, 0xE5, 0x8F, 0xB6, 0xE5, 0xAE, 0x9A, 0xE5, 0x88, 0xB6};
-      int match = 1;
-      int i;
-      for (i = 0; i < 12; i++) {
-          if ((unsigned char)ls->current != sig[i]) {
-              match = 0;
-              break;
-          }
-          next(ls);
-      }
-      if (match) {
-          while (!currIsNewline(ls) && ls->current != EOZ)
-              next(ls);
-      }
-  }
   for (;;) {
     switch (ls->current) {
       case '\n': case '\r': {  /* line breaks */

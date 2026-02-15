@@ -191,7 +191,7 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
     }
     /* else repeat (tail call 'luaV_finishget') */
   }
-  luaG_runerror(L, "'__index' chain too long; possible loop");
+  luaG_runerror(L, "'__index' 链太长；可能存在循环");
 }
 
 
@@ -236,7 +236,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       return;  /* done */
     /* else loop */
   }
-  luaG_runerror(L, "'__newindex' chain too long; possible loop");
+  luaG_runerror(L, "'__newindex' 链太长；可能存在循环");
 }
 
 
@@ -493,7 +493,7 @@ void luaV_concat (lua_State *L, int total) {
       for (n = 1; n < total && tostring(L, top - n - 1); n++) {
         size_t l = vslen(top - n - 1);
         if (l >= (MAX_SIZE/sizeof(char)) - tl)
-          luaG_runerror(L, "string length overflow");
+          luaG_runerror(L, "字符串长度溢出");
         tl += l;
       }
       if (tl <= LUAI_MAXSHORTLEN) {  /* is result a short string? */
@@ -554,7 +554,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
 lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
-      luaG_runerror(L, "attempt to divide by zero");
+      luaG_runerror(L, "尝试除以零");
     return intop(-, 0, m);   /* n==-1; avoid overflow with 0x80000...//-1 */
   }
   else {
@@ -574,7 +574,7 @@ lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
 lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
-      luaG_runerror(L, "attempt to perform 'n%%0'");
+      luaG_runerror(L, "尝试对零取模");
     return 0;   /* m % -1 == 0; avoid overflow with 0x80000...%-1 */
   }
   else {
@@ -750,9 +750,9 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 }
 
 #define RKB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), base + cl->p->maxstacksize - 2) : base+GETARG_B(i))
+	ISK(GETARG_B(i)) ? get_rk_ptr(k, GETARG_B(i), base + cl->p->scratch_base) : base+GETARG_B(i))
 #define RKC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgK, \
-	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->maxstacksize - 1) : base+GETARG_C(i))
+	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1) : base+GETARG_C(i))
 
 
 /* execute a jump instruction */
@@ -765,7 +765,7 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 #define donextjump(ci)	{ i = *ci->u.l.savedpc; dojump(ci, i, 1); }
 
 
-#define Protect(x)	{ {x;}; base = ci->u.l.base; }
+#define Protect(x)	{ {x;}; base = ci->u.l.base; ra = RA(i); }
 
 #define checkGC(L,c)  \
 	{ luaC_condGC(L, L->top = (c),  /* limit of live values */ \
@@ -929,13 +929,13 @@ void luaV_execute (lua_State *L) {
             switch (t->type) {
                 case 1:
                     if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
+                        luaG_runerror(L, "数组键必须是整数");
                     break;
                 case 2:
-                    luaG_runerror(L, "const table cannot be set");
+                    luaG_runerror(L, "常量表不能被修改");
                     break;
                 case 3:
-                    luaG_runerror(L, "array key must be a integer");
+                    luaG_runerror(L, "数组键必须是整数");
                     break;
             }
         }
@@ -956,13 +956,13 @@ void luaV_execute (lua_State *L) {
             switch (t->type) {
                 case 1:
                     if (!ttisinteger(rb))
-                        luaG_runerror(L, "array key must be a integer");
+                        luaG_runerror(L, "数组键必须是整数");
                     break;
                 case 2:
-                    luaG_runerror(L, "const table cannot be set");
+                    luaG_runerror(L, "常量表不能被修改");
                     break;
                 case 3:
-                    luaG_runerror(L, "array key must be a integer");
+                    luaG_runerror(L, "数组键必须是整数");
                     break;
             }
         }
@@ -1343,13 +1343,13 @@ void luaV_execute (lua_State *L) {
         else {  /* try making all values floats */
           lua_Number ninit; lua_Number nlimit; lua_Number nstep;
           if (!tonumber(plimit, &nlimit))
-            luaG_runerror(L, "'for' limit must be a number");
+            luaG_runerror(L, "'for' 循环限制必须是数字");
           setfltvalue(plimit, nlimit);
           if (!tonumber(pstep, &nstep))
-            luaG_runerror(L, "'for' step must be a number");
+            luaG_runerror(L, "'for' 循环步长必须是数字");
           setfltvalue(pstep, nstep);
           if (!tonumber(init, &ninit))
-            luaG_runerror(L, "'for' initial value must be a number");
+            luaG_runerror(L, "'for' 循环初始值必须是数字");
           setfltvalue(init, luai_numsub(L, ninit, nstep));
         }
         ci->u.l.savedpc += GETARG_sBx(i);
@@ -1446,7 +1446,7 @@ void luaV_execute (lua_State *L) {
           rc_val = RKC(i);
         } else {
           int b = GETARG_Bx(next_i);
-          rc_val = ISK(b) ? get_rk_ptr(k, b, base + cl->p->maxstacksize - 1) : base + b;
+          rc_val = ISK(b) ? get_rk_ptr(k, b, base + cl->p->scratch_base + 1) : base + b;
         }
         setobj2s(L, ra, rc_val);
         vmbreak;
