@@ -11,6 +11,7 @@
 
 
 #include <string.h>
+#include "lobfuscator.h"
 
 #include "lua.h"
 
@@ -884,7 +885,7 @@ static void parlist (LexState *ls) {
           f->is_vararg = 2;  /* declared vararg */
           break;
         }
-        default: luaX_syntaxerror(ls, "期望出现 <name> 或 '...' ");
+        default: luaX_syntaxerror(ls, "期望出现 变量名 或 '...' ");
       }
     } while (!f->is_vararg && testnext(ls, ','));
   }
@@ -956,7 +957,7 @@ static void lambda_parlist(LexState *ls) {
                     f->is_vararg = 1;
                     break;
                 }
-                default: luaX_syntaxerror(ls, "期望出现 <name> 或 '...' ");
+                default: luaX_syntaxerror(ls, "期望出现 变量名 或 '...' ");
             }
         } while (!f->is_vararg && testnext(ls, ','));
     }
@@ -1029,7 +1030,7 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       break;
     }
     default: {
-      luaX_syntaxerror(ls, "期望函数参数");
+      luaX_syntaxerror(ls, "期望出现 函数参数");
     }
   }
   lua_assert(f->k == VNONRELOC);
@@ -1101,6 +1102,10 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       case ':': {  /* ':' NAME funcargs */
         int next_t = luaX_lookahead(ls);
         if (next_t != TK_NAME && (next_t < FIRST_RESERVED || next_t > TK_WHILE))
+          return;
+        /* look ahead more to distinguish method call from ternary operator */
+        int next_t2 = luaX_lookahead2(ls);
+        if (next_t2 != '(' && next_t2 != '{' && next_t2 != TK_STRING)
           return;
         expdesc key;
         luaX_next(ls);
@@ -1277,35 +1282,34 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
 }
 
 
+#define is_simple_token(t) ((t) == TK_INT || (t) == TK_FLT || (t) == TK_STRING || \
+                            (t) == TK_TRUE || (t) == TK_FALSE || (t) == TK_NIL)
+
 static void expr (LexState *ls, expdesc *v) {
   subexpr(ls, v, 0);
   if (testnext(ls, '?')) {
     FuncState *fs = ls->fs;
-    expdesc v2, v3;
+    int old_free = fs->freereg;
 
-    expr(ls, &v2);
-    checknext(ls, ':');
-    expr(ls, &v3);
+    /* Optimization: Use OP_TERNARY for simple constant branches */
+    if (is_simple_token(ls->t.token) && luaX_lookahead(ls) == ':' && is_simple_token(luaX_lookahead2(ls))) {
+      expdesc v2, v3;
+      simpleexp(ls, &v2);
+      checknext(ls, ':');
+      simpleexp(ls, &v3);
 
-    // If both are simple, use OP_TERNARY
-    if ((v2.k == VK || v2.k == VKINT || v2.k == VKFLT || v2.k == VNONRELOC || v2.k == VLOCAL) &&
-        (v3.k == VK || v3.k == VKINT || v3.k == VKFLT || v3.k == VNONRELOC || v3.k == VLOCAL)) {
-      int reg = luaK_exp2anyreg(fs, v); // Condition register
-      int res = fs->freereg;
-      luaK_reserveregs(fs, 1);
-
+      luaK_exp2nextreg(fs, v);
+      int reg = v->u.info;
       int b = luaK_exp2RK(fs, &v2);
       int c = luaK_exp2RK(fs, &v3);
-
-      // Instruction 1: OP_TERNARY res reg b
-      // Instruction 2: OP_EXTRAARG (using its B field for c)
-      luaK_codeABC(fs, OP_TERNARY, res, reg, b);
-      luaK_codeABC(fs, OP_EXTRAARG, 0, c, 0);
-
+      luaK_codeABC(fs, OP_TERNARY, reg, reg, b);
+      luaK_codeABx(fs, OP_EXTRAARG, 0, c);
       v->k = VNONRELOC;
-      v->u.info = res;
+      v->u.info = reg;
+      fs->freereg = old_free + 1;
     } else {
-      // Fallback to jump-based for short-circuiting
+      /* Fallback to jump-based for short-circuiting and complex expressions */
+      expdesc v2, v3;
       int jf;
       int end_label = NO_JUMP;
 
@@ -1313,15 +1317,21 @@ static void expr (LexState *ls, expdesc *v) {
       jf = v->f;
       v->f = NO_JUMP;
 
+      expr(ls, &v2);
       luaK_exp2nextreg(fs, &v2);
+      int res_reg = v2.u.info;
       luaK_concat(fs, &end_label, luaK_jump(fs));
 
+      checknext(ls, ':');
+
       luaK_patchtohere(fs, jf);
-      luaK_exp2reg(fs, &v3, v2.u.info);
+      expr(ls, &v3);
+      luaK_exp2reg(fs, &v3, res_reg);
 
       luaK_patchtohere(fs, end_label);
       v->k = VNONRELOC;
-      v->u.info = v2.u.info;
+      v->u.info = res_reg;
+      fs->freereg = old_free + 1;
     }
   }
 }
@@ -1654,7 +1664,7 @@ static void forstat (LexState *ls, int line) {
     case '=': fornum(ls, varname, line); break;
     default: forlist(ls, varname);
     /*case ',': case TK_IN: forlist(ls, varname); break;
-    default: luaX_syntaxerror(ls, "期望出现 '=' 或 'in' ");*/
+    default: luaX_syntaxerror(ls, "'=' or 'in' expected");*/
   }
   check_match(ls, TK_END, TK_FOR, line);
   leaveblock(fs);  /* loop scope ('break' jumps to this point) */
@@ -1684,7 +1694,7 @@ static void test_then_block (LexState *ls, int *escapelist) {
     }
     else  /* must skip over 'then' part if condition is false */
       //jf = luaK_jump(fs);
-      luaX_syntaxerror(ls, "无法访问的语句");
+      luaX_syntaxerror(ls, "无法执行到的语句");
   }
   else {  /* regular case (not goto/break) */
     luaK_goiftrue(ls->fs, &v);  /* skip over block if condition is false */
@@ -1831,7 +1841,7 @@ static void test_case_block (LexState *ls, int *escapelist, expdesc *control) {
     }
     else  /* must skip over 'then' part if condition is false */
       //jf = luaK_jump(fs);
-      luaX_syntaxerror(ls, "无法访问的语句");
+      luaX_syntaxerror(ls, "无法执行到的语句");
   }
   else {  /* regular case (not goto/break) */
     luaK_goiftrue(ls->fs, control);  /* skip over block if condition is false */
@@ -2115,7 +2125,7 @@ static void statement (LexState *ls) {
       gotostat(ls, luaK_jump(ls->fs));
       while (testnext(ls, ';')) {}  /* skip semicolons */
       if (!block_follow(ls, 1))
-        luaX_syntaxerror(ls, "无法访问的语句");
+        luaX_syntaxerror(ls, "无法执行到的语句");
       break;
     }
     case TK_GOTO: {  /* stat -> 'goto' NAME */

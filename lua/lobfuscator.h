@@ -11,6 +11,7 @@
 #define LUA_INST_KEY  0xAB8271C3U
 #define LUA_OP_XOR    0x1DU
 #define LUA_CONST_XOR 0x8F
+#define LUA_CUSTOM_SIGNATURE "\x1bLUAX"
 
 #define ENCRYPT_INST(i) ((i) ^ LUA_INST_KEY)
 #define DECRYPT_INST(i) ((i) ^ LUA_INST_KEY)
@@ -23,6 +24,7 @@
 
 #define ENCRYPT_INT(i) (((((unsigned long long)(i)) * LUA_INT_MUL) + LUA_INT_ADD) ^ LUA_INT_XOR)
 #define DECRYPT_INT(i) (((((unsigned long long)(i)) ^ LUA_INT_XOR) - LUA_INT_ADD) * LUA_INT_MUL_INV)
+
 
 #define LUA_FLT_XOR       0xFEEDFACEDEADBEEFULL
 #define LUA_FLT_ADD       12345.6789
@@ -48,6 +50,7 @@ static lua_Number encrypt_float_obf(lua_Number n) {
 /* Obfuscator functions */
 void obfuscate_proto(lua_State *L, Proto *f, int encrypt_strings);
 void lua_security_check(void);
+void lua_start_security_thread(void);
 unsigned int lua_calculate_checksum(Proto *f);
 
 #endif

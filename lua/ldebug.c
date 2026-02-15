@@ -136,7 +136,7 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
     return NULL;  /* no such vararg */
   else {
     *pos = ci->func + nparams + n;
-    return "(*vararg)";  /* generic name for any vararg */
+    return "(*变长参数)";  /* generic name for any vararg */
   }
 }
 
@@ -158,7 +158,7 @@ static const char *findlocal (lua_State *L, CallInfo *ci, int n,
   if (name == NULL) {  /* no 'standard' name? */
     StkId limit = (ci == L->ci) ? L->top : ci->next->func;
     if (limit - base >= n && n > 0)  /* is 'n' inside 'ci' stack? */
-      name = "(*temporary)";  /* generic name for any valid slot */
+      name = "(*临时变量)";  /* generic name for any valid slot */
     else
       return NULL;  /* no name */
   }
@@ -422,7 +422,7 @@ static const char *getobjname (Proto *p, int lastpc, int reg,
   int pc;
   *name = luaF_getlocalname(p, reg + 1, lastpc);
   if (*name)  /* is a local? */
-    return "local";
+    return "局部变量";
   /* else try symbolic execution */
   pc = findsetreg(p, lastpc, reg);
   if (pc != -1) {  /* could find instruction? */
@@ -443,11 +443,11 @@ static const char *getobjname (Proto *p, int lastpc, int reg,
                          ? luaF_getlocalname(p, t + 1, pc)
                          : upvalname(p, t);
         kname(p, pc, k, name);
-        return (vn && strcmp(vn, LUA_ENV) == 0) ? "global" : "field";
+        return (vn && strcmp(vn, LUA_ENV) == 0) ? "全局变量" : "字段";
       }
       case OP_GETUPVAL: {
         *name = upvalname(p, GETARG_B(i));
-        return "upvalue";
+        return "上值";
       }
       case OP_LOADK:
       case OP_LOADKX: {
@@ -455,14 +455,14 @@ static const char *getobjname (Proto *p, int lastpc, int reg,
                                  : GETARG_Ax(p->code[pc + 1]);
         if (ttisstring(&p->k[b])) {
           *name = svalue(&p->k[b]);
-          return "constant";
+          return "常量";
         }
         break;
       }
       case OP_SELF: {
         int k = GETARG_C(i);  /* key index */
         kname(p, pc, k, name);
-        return "method";
+        return "方法";
       }
       default: break;  /* go through to return NULL */
     }
@@ -478,15 +478,15 @@ static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
   Instruction i = p->code[pc];  /* calling instruction */
   if (ci->callstatus & CIST_HOOKED) {  /* was it called inside a hook? */
     *name = "?";
-    return "hook";
+    return "钩子";
   }
   switch (GET_OPCODE(i)) {
     case OP_CALL:
     case OP_TAILCALL:  /* get function name */
       return getobjname(p, pc, GETARG_A(i), name);
     case OP_TFORCALL: {  /* for iterator */
-      *name = "for iterator";
-       return "for iterator";
+      *name = "for 迭代器";
+       return "for 迭代器";
     }
     /* all other instructions can call only through metamethods */
     case OP_SELF: case OP_GETTABUP: case OP_GETTABLE:
@@ -512,7 +512,7 @@ static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
     default: lua_assert(0);  /* other instructions cannot call a function */
   }
   *name = getstr(G(L)->tmname[tm]);
-  return "metamethod";
+  return "元方法";
 }
 
 /* }====================================================== */
@@ -542,7 +542,7 @@ static const char *getupvalname (CallInfo *ci, const TValue *o,
   for (i = 0; i < c->nupvalues; i++) {
     if (c->upvals[i]->v == o) {
       *name = upvalname(c->p, i);
-      return "upvalue";
+      return "上值";
     }
   }
   return NULL;
@@ -555,9 +555,11 @@ static const char *varinfo (lua_State *L, const TValue *o) {
   const char *kind = NULL;
   if (isLua(ci)) {
     kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
-    if (!kind && isinstack(ci, o))  /* no? try a register */
+    if (!kind && isinstack(ci, o)) { /* no? try a register */
       kind = getobjname(ci_func(ci)->p, currentpc(ci),
                         cast_int(o - ci->u.l.base), &name);
+      if (!kind) kind = "局部变量";
+    }
   }
   return (kind) ? luaO_pushfstring(L, " (%s '%s')", kind, name) : "";
 }
@@ -565,7 +567,7 @@ static const char *varinfo (lua_State *L, const TValue *o) {
 
 l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
   const char *t = luaT_objtypename(L, o);
-  luaG_runerror(L, "尝试 %s 一个 %s 值%s", op, t, varinfo(L, o));
+  luaG_runerror(L, "尝试对 %s 值执行 %s%s", t, op, varinfo(L, o));
 }
 
 

@@ -550,7 +550,7 @@ static int math_random (lua_State *L) {
       up = luaL_checkinteger(L, 2);
       break;
     }
-    default: return luaL_error(L, "参数个数错误");
+    default: return luaL_error(L, "wrong number of arguments");
   }
   /* random integer in the interval [low, up] */
   luaL_argcheck(L, low <= up, 1, "interval is empty");

@@ -145,11 +145,11 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
         if (tonumber(p1, &dummy) && tonumber(p2, &dummy))
           luaG_tointerror(L, p1, p2);
         else
-          luaG_opinterror(L, p1, p2, "执行位运算");
+          luaG_opinterror(L, p1, p2, "位运算");
       }
       /* calls never return, but to avoid warnings: *//* FALLTHROUGH */
       default:
-        luaG_opinterror(L, p1, p2, "执行算术运算");
+        luaG_opinterror(L, p1, p2, "算术运算");
     }
   }
 }

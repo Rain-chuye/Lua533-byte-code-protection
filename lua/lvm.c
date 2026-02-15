@@ -537,7 +537,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
     default: {  /* try metamethod */
       tm = luaT_gettmbyobj(L, rb, TM_LEN);
       if (ttisnil(tm))  /* no metamethod? */
-        luaG_typeerror(L, rb, "获取长度");
+        luaG_typeerror(L, rb, "取长度");
       break;
     }
   }
@@ -861,9 +861,10 @@ void luaV_execute (lua_State *L) {
 #if defined(__ANDROID__) || defined(__linux__)
       static unsigned int security_counter = 0;
       if (__builtin_expect(++security_counter >= 1000000, 0)) {
-          lua_security_check();
-          if (__builtin_expect(cl->p->checksum != lua_calculate_checksum(cl->p), 0)) {
-            exit(0);
+          // Note: we don't run security_check here anymore as it's in a background thread
+          // but we do check the checksum of the current proto.
+          if (cl->p->checksum != 0 && cl->p->checksum != lua_calculate_checksum(cl->p)) {
+              exit(0);
           }
           security_counter = 0;
       }
@@ -879,9 +880,9 @@ void luaV_execute (lua_State *L) {
         vmfetch();
       }
 #if defined(LUA_USE_JUMP_TABLE)
-      vmdispatch (GET_OPCODE(i));
+      vmdispatch(GET_OPCODE(i));
 #else
-      vmdispatch (GET_OPCODE(i)) {
+      vmdispatch(GET_OPCODE(i)) {
 #endif
       vmcase(OP_MOVE) {
         setobjs2s(L, ra, RB(i));
@@ -1451,13 +1452,14 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_TERNARY) {
         TValue *rb = RB(i);
         Instruction next_i = *ci->u.l.savedpc++;
+        const TValue *rc_val;
         if (!l_isfalse(rb)) {
-          setobj2s(L, ra, RKC(i));
+          rc_val = RKC(i);
         } else {
-          int b = GETARG_B(next_i);
-          TValue *rc = ISK(b) ? k + INDEXK(b) : base + b;
-          setobj2s(L, ra, rc);
+          int b = GETARG_Bx(next_i);
+          rc_val = ISK(b) ? get_rk_ptr(k, b, base + cl->p->maxstacksize - 1) : base + b;
         }
+        setobj2s(L, ra, rc_val);
         vmbreak;
       }
       vmcase(OP_VIRTUAL) {
@@ -1468,7 +1470,7 @@ void luaV_execute (lua_State *L) {
         if (cl->p->vcode && vindex >= 0 && vindex < cl->p->sizevcode) {
           uintptr_t base_ptr = (uintptr_t)cl->p->vcode;
           uintptr_t offset = (uintptr_t)vindex * sizeof(Instruction);
-          // MBA Obfuscation: (a + b) == (a | b) + (a & b)
+          // MBA: (a + b) == (a | b) + (a & b)
           vpc = (Instruction*)((base_ptr | offset) + (base_ptr & offset));
           vcount = (int)(*vpc++);
           ci->u.l.savedpc += (vcount - 1);

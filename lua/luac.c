@@ -379,8 +379,21 @@ static void PrintCode(const Proto* f)
    case OP_SETLIST:
     if (c==0) printf("\t; %d",(int)code[++pc]); else printf("\t; %d",c);
     break;
+   case OP_TERNARY:
+    printf("\t; ");
+    if (ISK(c)) PrintConstant(f,INDEXK(c)); else printf("-");
+    printf(" ");
+    {
+      Instruction next_i = code[pc+1];
+      if (GET_OPCODE(next_i) == OP_EXTRAARG) {
+        int b2 = GETARG_Bx(next_i);
+        if (ISK(b2)) PrintConstant(f,INDEXK(b2)); else printf("-");
+      } else printf("?");
+    }
+    break;
    case OP_EXTRAARG:
-    printf("\t; "); PrintConstant(f,ax);
+    printf("\t; ");
+    if (ax < f->sizek) PrintConstant(f,ax); else printf("count %d", ax);
     break;
    default:
     break;

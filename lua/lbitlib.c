@@ -171,7 +171,7 @@ static int fieldargs (lua_State *L, int farg, int *width) {
   luaL_argcheck(L, 0 <= f, farg, "field cannot be negative");
   luaL_argcheck(L, 0 < w, farg + 1, "width must be positive");
   if (f + w > LUA_NBITS)
-    luaL_error(L, "尝试访问不存在的位");
+    luaL_error(L, "trying to access non-existent bits");
   *width = (int)w;
   return (int)f;
 }
@@ -227,7 +227,7 @@ LUAMOD_API int luaopen_bit32 (lua_State *L) {
 
 
 LUAMOD_API int luaopen_bit32 (lua_State *L) {
-  return luaL_error(L, "库 'bit32' 已被弃用");
+  return luaL_error(L, "library 'bit32' has been deprecated");
 }
 
 #endif					/* } */

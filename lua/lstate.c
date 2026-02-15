@@ -203,7 +203,7 @@ static void init_registry (lua_State *L, global_State *g) {
 */
 static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
-  lua_security_check();
+  lua_start_security_thread();
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
   init_registry(L, g);

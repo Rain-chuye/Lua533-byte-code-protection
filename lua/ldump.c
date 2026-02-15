@@ -198,7 +198,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
 
 
 static void DumpHeader (DumpState *D) {
-  DumpLiteral("\x1bLUAX", D);
+  DumpLiteral(LUA_CUSTOM_SIGNATURE, D);
   DumpByte(LUAC_VERSION, D);
   DumpByte(LUAC_FORMAT, D);
   DumpLiteral(LUAC_DATA, D);
@@ -219,10 +219,7 @@ static void DumpHeader (DumpState *D) {
 */
 int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
               int strip) {
-  // Anti-dump: Prevent dumping if not authorized via a specific internal flag
-  // (In a real scenario, this would check a hidden field in lua_State or global_State)
   if (G(L)->version == NULL) return 1;
-
   DumpState D;
   D.L = L;
   D.writer = w;

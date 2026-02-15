@@ -39,7 +39,7 @@ static int luaB_print (lua_State *L) {
     lua_call(L, 1, 1);
     s = lua_tolstring(L, -1, &l);  /* get result */
     if (s == NULL)
-      return luaL_error(L, "'tostring' 必须为 'print' 返回一个字符串");
+      return luaL_error(L, "'tostring' 必须返回一个字符串给 'print'");
     if (i>1) lua_writestring("\t", 1);
     lua_writestring(s, l);
 #ifdef __ANDROID__
@@ -178,7 +178,7 @@ static int luaB_setmetamethod (lua_State *L) {
   luaL_argcheck(L, t == LUA_TNIL || t == LUA_TTABLE || t == LUA_TFUNCTION, 2,
                 "table function or nil expected");
   if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL)
-    return luaL_error(L, "无法修改受保护的元表");
+    return luaL_error(L, "cannot change a protected metatable");
   lua_settop(L, 3);
   lua_getmetatable(L,1);
   if(lua_type(L,4)!=LUA_TTABLE){

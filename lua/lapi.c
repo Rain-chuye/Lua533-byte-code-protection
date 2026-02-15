@@ -813,9 +813,9 @@ LUA_API void lua_rawset (lua_State *L, int idx) {
   api_check(L, ttistable(o), "table expected");
   Table *t=hvalue(o);
   if(t->type==2)
-    luaG_runerror(L, "常量表不可设置");
+    luaG_runerror(L, "const table cannot be set");
   else if(t->type==3)
-    luaG_runerror(L, "常量数组不可设置");
+    luaG_runerror(L, "const array cannot be set");
   slot = luaH_set(L, t, L->top - 2);
   setobj2t(L, slot, L->top - 1);
   invalidateTMcache(t);
@@ -850,9 +850,9 @@ LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
   api_check(L, ttistable(o), "table expected");
   Table *t=hvalue(o);
   if(t->type==2)
-    luaG_runerror(L, "常量表不可设置");
+    luaG_runerror(L, "const table cannot be set");
   else if(t->type==3)
-    luaG_runerror(L, "常量数组不可设置");
+    luaG_runerror(L, "const array cannot be set");
   luaH_setint(L, t, n, L->top - 1);
   luaC_barrierback(L, hvalue(o), L->top-1);
   L->top--;
@@ -870,9 +870,9 @@ LUA_API void lua_rawsetp (lua_State *L, int idx, const void *p) {
   setpvalue(&k, cast(void *, p));
   Table *t=hvalue(o);
   if(t->type==2)
-    luaG_runerror(L, "常量表不可设置");
+    luaG_runerror(L, "const table cannot be set");
   else if(t->type==3)
-    luaG_runerror(L, "常量数组不可设置");
+    luaG_runerror(L, "const array cannot be set");
   slot = luaH_set(L, t, &k);
   setobj2t(L, slot, L->top - 1);
   luaC_barrierback(L, hvalue(o), L->top - 1);

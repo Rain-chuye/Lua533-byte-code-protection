@@ -166,18 +166,18 @@ LUALIB_API void luaL_traceback (lua_State *L, lua_State *L1,
 LUALIB_API int luaL_argerror (lua_State *L, int arg, const char *extramsg) {
   lua_Debug ar;
   if (!lua_getstack(L, 0, &ar))  /* no stack frame? */
-    return luaL_error(L, "错误的参数 #%d (%s)", arg, extramsg);
+    return luaL_error(L, "bad argument #%d (%s)", arg, extramsg);
   lua_getinfo(L, "n", &ar);
   if (strcmp(ar.namewhat, "method") == 0) {
     arg--;  /* do not count 'self' */
     if (arg == 0)  /* error is in the self argument itself? */
-      return luaL_error(L, "在错误的 self 上调用 '%s' (%s)",
+      return luaL_error(L, "calling '%s' on bad self (%s)",
                            ar.name, extramsg);
   }
   if (ar.name == NULL)
     ar.name = (pushglobalfuncname(L, &ar)) ? lua_tostring(L, -1) : "?";
-  return luaL_error(L, "对 '%s' 的第 #%d 个参数错误 (%s)",
-                        ar.name, arg, extramsg);
+  return luaL_error(L, "bad argument #%d to '%s' (%s)",
+                        arg, ar.name, extramsg);
 }
 
 
@@ -190,7 +190,7 @@ static int typeerror (lua_State *L, int arg, const char *tname) {
     typearg = "light userdata";  /* special name for messages */
   else
     typearg = luaL_typename(L, arg);  /* standard name */
-  msg = lua_pushfstring(L, "期望出现 %s，实际得到 %s", tname, typearg);
+  msg = lua_pushfstring(L, "%s expected, got %s", tname, typearg);
   return luaL_argerror(L, arg, msg);
 }
 
@@ -370,9 +370,9 @@ LUALIB_API int luaL_checkoption (lua_State *L, int arg, const char *def,
 LUALIB_API void luaL_checkstack (lua_State *L, int space, const char *msg) {
   if (!lua_checkstack(L, space)) {
     if (msg)
-      luaL_error(L, "栈溢出 (%s)", msg);
+      luaL_error(L, "stack overflow (%s)", msg);
     else
-      luaL_error(L, "栈溢出");
+      luaL_error(L, "stack overflow");
   }
 }
 
@@ -467,7 +467,7 @@ static void *resizebox (lua_State *L, int idx, size_t newsize) {
   void *temp = allocf(ud, box->box, box->bsize, newsize);
   if (temp == NULL && newsize > 0) {  /* allocation error? */
     resizebox(L, idx, 0);  /* free buffer */
-    luaL_error(L, "内存不足，无法分配缓冲区");
+    luaL_error(L, "not enough memory for buffer allocation");
   }
   box->box = temp;
   box->bsize = newsize;
@@ -512,7 +512,7 @@ LUALIB_API char *luaL_prepbuffsize (luaL_Buffer *B, size_t sz) {
     if (newsize - B->n < sz)  /* not big enough? */
       newsize = B->n + sz;
     if (newsize < B->n || newsize - B->n < sz)
-      luaL_error(L, "缓冲区过大");
+      luaL_error(L, "buffer too large");
     /* create larger buffer */
     if (buffonstack(B))
       newbuff = (char *)resizebox(L, -1, newsize);
@@ -831,7 +831,7 @@ LUALIB_API lua_Integer luaL_len (lua_State *L, int idx) {
   lua_len(L, idx);
   l = lua_tointegerx(L, -1, &isnum);
   if (!isnum)
-    luaL_error(L, "对象长度不是整数");
+    luaL_error(L, "object length is not an integer");
   lua_pop(L, 1);  /* remove object */
   return l;
 }

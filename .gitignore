@@ -2,3 +2,7 @@ lua/*.o
 lua/lua
 lua/luac
 lua/liblua.a
+lua/*.o
+lua/lua
+lua/luac
+lua/liblua.a

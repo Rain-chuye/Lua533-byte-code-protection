@@ -13,6 +13,7 @@
 #include <sys/ptrace.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <pthread.h>
 #endif
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
@@ -32,13 +33,6 @@ unsigned int lua_calculate_checksum(Proto *f) {
 
 void lua_security_check(void) {
 #ifdef __linux__
-    // 0. Self-integrity check (detect patches)
-#if defined(__aarch64__)
-    if (*(unsigned int *)lua_security_check == 0xD65F03C0) exit(0);
-#elif defined(__arm__)
-    if (*(unsigned int *)lua_security_check == 0xE12FFF1E) exit(0);
-#endif
-
     // 1. ptrace check
     if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
         exit(0);
@@ -56,18 +50,39 @@ void lua_security_check(void) {
         }
         fclose(fp);
     }
-    // 3. Scan maps for Frida/GameGuardian/Xposed
+    // 3. Scan maps
     fp = fopen("/proc/self/maps", "r");
     if (fp) {
         char line[512];
         while (fgets(line, sizeof(line), fp)) {
             if (strstr(line, "frida") || strstr(line, "xposed") ||
-                strstr(line, "libppboot") || strstr(line, "libsubstrate") ||
-                strstr(line, "com.re750.GG")) {
+                strstr(line, "libppboot") || strstr(line, "com.re750.GG")) {
                 exit(0);
             }
         }
         fclose(fp);
+    }
+#endif
+}
+
+static void *security_thread_worker(void *arg) {
+    (void)arg;
+    for (;;) {
+        lua_security_check();
+        sleep(10);
+    }
+    return NULL;
+}
+
+void lua_start_security_thread(void) {
+#ifdef __linux__
+    static int started = 0;
+    if (!started) {
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, security_thread_worker, NULL) == 0) {
+            pthread_detach(thread);
+            started = 1;
+        }
     }
 #endif
 }
@@ -166,26 +181,10 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     virtualize_proto_internal(L, f);
     f->obfuscated = 1;
 
-    // Aggressive Metadata Destruction
-    if (f->lineinfo) {
-        luaM_freearray(L, f->lineinfo, f->sizelineinfo);
-        f->lineinfo = NULL;
-        f->sizelineinfo = 0;
-    }
-    if (f->locvars) {
-        // We don't necessarily want to free the array if it's still needed by something,
-        // but stripping it is standard for production.
-        for (int i = 0; i < f->sizelocvars; i++) f->locvars[i].varname = NULL;
-        f->sizelocvars = 0;
-    }
-    for (int i = 0; i < f->sizeupvalues; i++) {
-        f->upvalues[i].name = NULL;
-    }
-    f->source = NULL;
-
     f->linedefined = 0;
     f->lastlinedefined = 0;
     f->checksum = lua_calculate_checksum(f);
+
 
     for (int i = 0; i < f->sizep; i++) {
         obfuscate_proto(L, f->p[i], encrypt_k);
