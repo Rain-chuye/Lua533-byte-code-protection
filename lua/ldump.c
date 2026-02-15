@@ -61,22 +61,22 @@ static void DumpInt (int x, DumpState *D) {
 }
 
 
-static void DumpNumber (lua_Number x, DumpState *D) {
+static void DumpNumber (lua_Number x, DumpState *D, lu_byte key) {
   unsigned char *p = (unsigned char *)&x;
   size_t i;
-  for (i = 0; i < sizeof(x); i++) p[i] ^= LUA_CONST_XOR;
+  for (i = 0; i < sizeof(x); i++) p[i] ^= (LUA_CONST_XOR ^ key);
   DumpVar(x, D);
 }
 
 
-static void DumpInteger (lua_Integer x, DumpState *D) {
+static void DumpInteger (lua_Integer x, DumpState *D, lu_byte key) {
   unsigned char *p = (unsigned char *)&x;
   size_t i;
-  for (i = 0; i < sizeof(x); i++) p[i] ^= LUA_CONST_XOR;
+  for (i = 0; i < sizeof(x); i++) p[i] ^= (LUA_CONST_XOR ^ key);
   DumpVar(x, D);
 }
 
-static void DumpString (const TString *s, DumpState *D) {
+static void DumpString (const TString *s, DumpState *D, lu_byte key) {
   if (s == NULL)
     DumpByte(0, D);
   else {
@@ -91,7 +91,7 @@ static void DumpString (const TString *s, DumpState *D) {
     // Encrypt string during dump without touching memory
     size_t i;
     for (i = 0; i < size; i++) {
-        DumpByte((lu_byte)(str[i] ^ LUA_CONST_XOR), D);
+        DumpByte((lu_byte)(str[i] ^ LUA_CONST_XOR ^ key), D);
     }
   }
 }
@@ -120,14 +120,14 @@ static void DumpConstants (const Proto *f, DumpState *D) {
         DumpByte(bvalue(o), D);
             break;
       case LUA_TNUMFLT:
-        DumpNumber(fltvalue(o), D);
+        DumpNumber(fltvalue(o), D, f->const_xor);
             break;
       case LUA_TNUMINT:
-        DumpInteger(ivalue(o), D);
+        DumpInteger(ivalue(o), D, f->const_xor);
             break;
       case LUA_TSHRSTR:
       case LUA_TLNGSTR:
-        DumpString(tsvalue(o), D);
+        DumpString(tsvalue(o), D, f->const_xor);
             break;
       default:
         lua_assert(0);
@@ -165,7 +165,7 @@ static void DumpDebug (const Proto *f, DumpState *D) {
 
 
 static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
-  DumpString(NULL, D);  /* Always strip source */
+  DumpString(NULL, D, 0);  /* Always strip source */
   DumpInt(0, D); // Strip line defined
   DumpInt(0, D); // Strip last line defined
   DumpByte(f->numparams, D);
@@ -173,6 +173,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
   DumpByte(f->maxstacksize, D);
   DumpByte(f->obfuscated, D);
   DumpByte(f->op_xor, D);
+  DumpByte(f->const_xor, D);
   DumpCode(f, D);
   DumpConstants(f, D);
   DumpUpvalues(f, D);
@@ -191,8 +192,8 @@ static void DumpHeader (DumpState *D) {
   DumpByte(sizeof(Instruction), D);
   DumpByte(sizeof(lua_Integer), D);
   DumpByte(sizeof(lua_Number), D);
-  DumpInteger(LUAC_INT, D);
-  DumpNumber(LUAC_NUM, D);
+  DumpInteger(LUAC_INT, D, 0);
+  DumpNumber(LUAC_NUM, D, 0);
 }
 
 

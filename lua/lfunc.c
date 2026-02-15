@@ -156,6 +156,7 @@ Proto *luaF_newproto (lua_State *L) {
   f->maxstacksize = 0;
   f->obfuscated = 0;
   f->op_xor = 0;
+  f->const_xor = 0;
   f->locvars = NULL;
   f->sizelocvars = 0;
   f->linedefined = 0;

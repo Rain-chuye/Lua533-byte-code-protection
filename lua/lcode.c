@@ -672,7 +672,7 @@ static int need_value (FuncState *fs, int list) {
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
-static void exp2reg (FuncState *fs, expdesc *e, int reg) {
+void exp2reg (FuncState *fs, expdesc *e, int reg) {
   discharge2reg(fs, e, reg);
   if (e->k == VJMP)  /* expression itself is a test? */
     luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */

@@ -1098,6 +1098,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         break;
       }
       case ':': {  /* ':' NAME funcargs */
+        if (ls->in_ternary && luaX_lookahead(ls) != TK_NAME) return;
         expdesc key;
         luaX_next(ls);
         checkname(ls, &key);
@@ -1275,6 +1276,28 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
 
 static void expr (LexState *ls, expdesc *v) {
   subexpr(ls, v, 0);
+  if (ls->t.token == '?') {
+    FuncState *fs = ls->fs;
+    expdesc v2, v3;
+    int jf;
+    int endj = NO_JUMP;
+    luaX_next(ls);
+    luaK_goiftrue(fs, v);
+    jf = v->f;
+    ls->in_ternary++;
+    expr(ls, &v2);
+    ls->in_ternary--;
+    checknext(ls, ':');
+    luaK_exp2anyreg(fs, &v2);
+    int res_reg = v2.u.info;
+    luaK_concat(fs, &endj, luaK_jump(fs));
+    luaK_patchtohere(fs, jf);
+    expr(ls, &v3);
+    exp2reg(fs, &v3, res_reg);
+    luaK_patchtohere(fs, endj);
+    v->k = VNONRELOC;
+    v->u.info = res_reg;
+  }
 }
 
 /* }==================================================================== */

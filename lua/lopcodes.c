@@ -128,6 +128,19 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 1, OpArgU, OpArgN, iABC)		/* OP_NEWARRAY */
  ,opmode(0, 0, OpArgN, OpArgU, iABC)		/* OP_TFOREACH */
  ,opmode(0, 0, OpArgN, OpArgN, iAx)		/* OP_VIRTUAL */
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
+ ,opmode(0, 0, 0, 0, 0)
 };
 LUAI_DDEF const lu_byte luaP_op_encode[64] = {
   13, 48, 25, 46, 15, 11, 55, 51, 17, 14, 29, 43, 26, 49, 50, 5,

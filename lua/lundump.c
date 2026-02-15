@@ -72,27 +72,27 @@ static int LoadInt (LoadState *S) {
 }
 
 
-static lua_Number LoadNumber (LoadState *S) {
+static lua_Number LoadNumber (LoadState *S, lu_byte key) {
   lua_Number x;
   LoadVar(S, x);
   unsigned char *p = (unsigned char *)&x;
   size_t i;
-  for (i = 0; i < sizeof(x); i++) p[i] ^= LUA_CONST_XOR;
+  for (i = 0; i < sizeof(x); i++) p[i] ^= (LUA_CONST_XOR ^ key);
   return x;
 }
 
 
-static lua_Integer LoadInteger (LoadState *S) {
+static lua_Integer LoadInteger (LoadState *S, lu_byte key) {
   lua_Integer x;
   LoadVar(S, x);
   unsigned char *p = (unsigned char *)&x;
   size_t i;
-  for (i = 0; i < sizeof(x); i++) p[i] ^= LUA_CONST_XOR;
+  for (i = 0; i < sizeof(x); i++) p[i] ^= (LUA_CONST_XOR ^ key);
   return x;
 }
 
 
-static TString *LoadString (LoadState *S) {
+static TString *LoadString (LoadState *S, lu_byte key) {
   unsigned int size = LoadByte(S);
   if (size == 0xFF)
     LoadVar(S, size);
@@ -102,7 +102,7 @@ static TString *LoadString (LoadState *S) {
     char buff[LUAI_MAXSHORTLEN + 1];
     unsigned int j;
     LoadVector(S, buff, size);
-    for (j = 0; j < size; j++) buff[j] ^= LUA_CONST_XOR;
+    for (j = 0; j < size; j++) buff[j] ^= (LUA_CONST_XOR ^ key);
     return luaS_newlstr(S->L, buff, size - 1);
   }
   else {  /* long string */
@@ -111,7 +111,7 @@ static TString *LoadString (LoadState *S) {
     char *s;
     LoadVector(S, getstr(ts), size);  /* load directly in final place */
     s = (char *)getstr(ts);
-    for (j = 0; j < size; j++) s[j] ^= LUA_CONST_XOR;
+    for (j = 0; j < size; j++) s[j] ^= (LUA_CONST_XOR ^ key);
     return ts;
   }
 }
@@ -146,14 +146,14 @@ static void LoadConstants (LoadState *S, Proto *f) {
       setbvalue(o, LoadByte(S));
             break;
       case LUA_TNUMFLT:
-      setfltvalue(o, LoadNumber(S));
+      setfltvalue(o, LoadNumber(S, f->const_xor));
             break;
       case LUA_TNUMINT:
-      setivalue(o, LoadInteger(S));
+      setivalue(o, LoadInteger(S, f->const_xor));
             break;
       case LUA_TSHRSTR:
       case LUA_TLNGSTR:
-        setsvalue2n(S->L, o, LoadString(S));
+        setsvalue2n(S->L, o, LoadString(S, f->const_xor));
             break;
       default:
         lua_assert(0);
@@ -202,18 +202,18 @@ static void LoadDebug (LoadState *S, Proto *f) {
   for (i = 0; i < n; i++)
     f->locvars[i].varname = NULL;
   for (i = 0; i < n; i++) {
-    f->locvars[i].varname = LoadString(S);
+    f->locvars[i].varname = LoadString(S, 0);
     f->locvars[i].startpc = LoadInt(S);
     f->locvars[i].endpc = LoadInt(S);
   }
   n = LoadInt(S);
   for (i = 0; i < n; i++)
-    f->upvalues[i].name = LoadString(S);
+    f->upvalues[i].name = LoadString(S, 0);
 }
 
 
 static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
-  f->source = LoadString(S);
+  f->source = LoadString(S, 0);
   if (f->source == NULL)  /* no source in dump? */
     f->source = psource;  /* reuse parent's source */
   f->linedefined = LoadInt(S);
@@ -223,6 +223,7 @@ static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
   f->maxstacksize = LoadByte(S);
   f->obfuscated = LoadByte(S);
   f->op_xor = LoadByte(S);
+  f->const_xor = LoadByte(S);
   LoadCode(S, f);
   LoadConstants(S, f);
   LoadUpvalues(S, f);
@@ -260,9 +261,9 @@ static void checkHeader (LoadState *S) {
   checksize(S, Instruction);
   checksize(S, lua_Integer);
   checksize(S, lua_Number);
-  if (LoadInteger(S) != LUAC_INT)
+  if (LoadInteger(S, 0) != LUAC_INT)
     error(S, "endianness mismatch in");
-  if (LoadNumber(S) != LUAC_NUM)
+  if (LoadNumber(S, 0) != LUAC_NUM)
     error(S, "float format mismatch in");
 }
 

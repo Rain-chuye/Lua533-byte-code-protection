@@ -232,11 +232,13 @@ OP_EXTRAARG,/*	Ax	extra (larger) argument for previous opcode	*/
 OP_TBC,
 OP_NEWARRAY,
 OP_TFOREACH,
-OP_VIRTUAL
+  OP_VIRTUAL,
+  OP_PAD1, OP_PAD2, OP_PAD3, OP_PAD4, OP_PAD5, OP_PAD6, OP_PAD7, OP_PAD8, OP_PAD9, OP_PAD10,
+  OP_PAD11, OP_PAD12, OP_PAD13
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_VIRTUAL) + 1)
+#define NUM_OPCODES 64
 
 
 /*===========================================================================
@@ -282,7 +284,10 @@ enum OpArgMask {
 LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
 
 #define LUA_OP_ENCODE(k, i) ((((i) >> 6) << 6) | ((GET_OPCODE(i) * 13 + ((k) % NUM_OPCODES)) % NUM_OPCODES))
-#define LUA_OP_DECODE(k, i) ((((i) >> 6) << 6) | (((GET_OPCODE(i) + NUM_OPCODES - ((k) % NUM_OPCODES)) * 4) % NUM_OPCODES))
+#define LUA_OP_DECODE(k, i) ((((i) >> 6) << 6) | (((GET_OPCODE(i) + NUM_OPCODES - ((k) % NUM_OPCODES)) * 5) % NUM_OPCODES))
+
+LUAI_DDEC const lu_byte luaP_op_encode[64];
+LUAI_DDEC const lu_byte luaP_op_decode[64];
 
 #define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 3))
 #define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 4) & 3))
