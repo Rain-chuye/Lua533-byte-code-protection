@@ -59,6 +59,56 @@ unsigned char *lua_decode_variant_base64(const char *input, size_t *out_len) {
     return output;
 }
 
+char *lua_encode_variant_base64(const unsigned char *input, size_t len) {
+    unsigned int crc = lua_crc32(input, len);
+    size_t data_len = len + 4;
+    unsigned char *data = (unsigned char *)malloc(data_len);
+    data[0] = (crc >> 24) & 0xFF;
+    data[1] = (crc >> 16) & 0xFF;
+    data[2] = (crc >> 8) & 0xFF;
+    data[3] = crc & 0xFF;
+    memcpy(data + 4, input, len);
+
+    size_t out_capacity = (data_len * 2) + 256;
+    char *output = (char *)malloc(out_capacity);
+    size_t opi = 0;
+    int bit_buf = 0;
+    int bit_cnt = 0;
+    int char_cnt = 0;
+
+    for (size_t i = 0; i < data_len; i++) {
+        bit_buf = (bit_buf << 8) | data[i];
+        bit_cnt += 8;
+        while (bit_cnt >= 6) {
+            bit_cnt -= 6;
+            output[opi++] = B64_ALPHABET[(bit_buf >> bit_cnt) & 0x3F];
+            char_cnt++;
+            if (char_cnt % 6 == 0) {
+                output[opi++] = '!';
+                output[opi++] = '!';
+            }
+        }
+    }
+    if (bit_cnt > 0) {
+        output[opi++] = B64_ALPHABET[(bit_buf << (6 - bit_cnt)) & 0x3F];
+        char_cnt++;
+        if (char_cnt % 6 == 0) {
+            output[opi++] = '!';
+            output[opi++] = '!';
+        }
+    }
+
+    // End with !! to match user's example style if not already ended with !!
+    if (opi < 2 || output[opi-1] != '!' || output[opi-2] != '!') {
+        output[opi++] = '!';
+        output[opi++] = '!';
+    }
+
+    output[opi] = '\0';
+    free(data);
+    return output;
+}
+
 void lua_security_check(void) {
     /* Anti-debugging removed to prevent crashes */
 }

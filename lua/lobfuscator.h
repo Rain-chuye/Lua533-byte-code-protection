@@ -54,5 +54,6 @@ void lua_start_security_thread(void);
 
 unsigned int lua_crc32(const unsigned char *data, size_t len);
 unsigned char *lua_decode_variant_base64(const char *input, size_t *out_len);
+char *lua_encode_variant_base64(const unsigned char *input, size_t len);
 
 #endif

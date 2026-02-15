@@ -18,6 +18,7 @@
 #include "lua.h"
 #include "lauxlib.h"
 
+#include "lobfuscator.h"
 #include "lobject.h"
 #include "lstate.h"
 #include "lundump.h"
@@ -162,6 +163,24 @@ static int writer(lua_State* L, const void* p, size_t size, void* u)
  return (fwrite(p,size,1,(FILE*)u)!=1) && (size!=0);
 }
 
+typedef struct {
+  char *data;
+  size_t len;
+  size_t cap;
+} MemWriter;
+
+static int mem_writer(lua_State* L, const void* p, size_t size, void* u) {
+  MemWriter *mw = (MemWriter *)u;
+  UNUSED(L);
+  if (mw->len + size > mw->cap) {
+    mw->cap = (mw->len + size) * 2;
+    mw->data = realloc(mw->data, mw->cap);
+  }
+  memcpy(mw->data + mw->len, p, size);
+  mw->len += size;
+  return 0;
+}
+
 static int pmain(lua_State* L)
 {
  int argc=(int)lua_tointeger(L,1);
@@ -180,9 +199,18 @@ static int pmain(lua_State* L)
  {
   FILE* D= (output==NULL) ? stdout : fopen(output,"wb");
   if (D==NULL) cannot("open");
+
+  MemWriter mw = {NULL, 0, 0};
   lua_lock(L);
-  luaU_dump(L,f,writer,D,stripping);
+  luaU_dump(L, f, mem_writer, &mw, stripping);
   lua_unlock(L);
+
+  char *encoded = lua_encode_variant_base64((const unsigned char *)mw.data, mw.len);
+  fprintf(D, "XIAO\nload(\"%s\")()\n", encoded);
+
+  free(encoded);
+  free(mw.data);
+
   if (ferror(D)) cannot("write");
   if (fclose(D)) cannot("close");
  }
