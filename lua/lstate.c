@@ -26,6 +26,7 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "ltm.h"
+#include "lobfuscator.h"
 
 
 #if !defined(LUAI_GCPAUSE)
@@ -202,6 +203,7 @@ static void init_registry (lua_State *L, global_State *g) {
 */
 static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
+  lua_security_check();
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
   init_registry(L, g);

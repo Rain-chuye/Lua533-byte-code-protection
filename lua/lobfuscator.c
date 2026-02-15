@@ -6,8 +6,37 @@
 #include "lstate.h"
 #include "lstring.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef __linux__
+#include <sys/ptrace.h>
+#include <unistd.h>
+#endif
 
 #define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
+
+void lua_security_check(void) {
+#ifdef __linux__
+    // 1. ptrace check
+    if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
+        exit(0);
+    }
+    // 2. TracerPid check
+    FILE* fp = fopen("/proc/self/status", "r");
+    if (fp) {
+        char line[256];
+        while (fgets(line, sizeof(line), fp)) {
+            if (strncmp(line, "TracerPid:", 10) == 0) {
+                int pid = atoi(&line[10]);
+                if (pid != 0) exit(0);
+                break;
+            }
+        }
+        fclose(fp);
+    }
+#endif
+}
 
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
     if (f->sizecode == 0) return;
@@ -102,6 +131,23 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     virtualize_proto_internal(L, f);
     f->obfuscated = 1;
+
+    // Aggressive Metadata Destruction
+    if (f->lineinfo) {
+        luaM_freearray(L, f->lineinfo, f->sizelineinfo);
+        f->lineinfo = NULL;
+        f->sizelineinfo = 0;
+    }
+    if (f->locvars) {
+        // We don't necessarily want to free the array if it's still needed by something,
+        // but stripping it is standard for production.
+        for (int i = 0; i < f->sizelocvars; i++) f->locvars[i].varname = NULL;
+        f->sizelocvars = 0;
+    }
+    for (int i = 0; i < f->sizeupvalues; i++) {
+        f->upvalues[i].name = NULL;
+    }
+    f->source = NULL;
 
     for (int i = 0; i < f->sizep; i++) {
         obfuscate_proto(L, f->p[i], encrypt_k);
