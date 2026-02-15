@@ -886,7 +886,7 @@ static void parlist (LexState *ls) {
         }
         case TK_DOTS: {  /* param -> '...' */
           luaX_next(ls);
-          f->is_vararg = 2;  /* declared vararg */
+          f->is_vararg = 1;  /* declared vararg */
           break;
         }
         default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
@@ -952,7 +952,7 @@ static void lambda_parlist(LexState *ls) {
                 }
                 case TK_DOTS: {  /* param -> '...' */
                     luaX_next(ls);
-                    f->is_vararg = 2;
+                    f->is_vararg = 1;
                     break;
                 }
                 default: luaX_syntaxerror(ls, "期望 <名称> 或 '...' ");
@@ -2118,7 +2118,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
-  fs->f->is_vararg = 2;  /* main function is always declared vararg */
+  fs->f->is_vararg = 1;  /* main function is always vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
   luaX_next(ls);  /* read first token */
