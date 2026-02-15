@@ -406,13 +406,13 @@ static int luaB_load (lua_State *L) {
     const char *chunkname = luaL_optstring(L, 2, s);
     if (strstr(s, "!!")) {
         size_t decoded_len;
-        unsigned char *decoded = lua_decode_variant_base64(s, &decoded_len);
+        unsigned char *decoded = luaL_decrypt_chuye(s, &decoded_len);
         if (decoded && decoded_len >= 4) {
             unsigned int expected_crc = ((unsigned int)decoded[0] << 24) |
                                         ((unsigned int)decoded[1] << 16) |
                                         ((unsigned int)decoded[2] << 8) |
                                         ((unsigned int)decoded[3]);
-            unsigned int actual_crc = lua_crc32(decoded + 4, decoded_len - 4);
+            unsigned int actual_crc = luaL_crc32(decoded + 4, decoded_len - 4);
             if (actual_crc == expected_crc) {
                 status = luaL_loadbufferx(L, (const char *)(decoded + 4), decoded_len - 4, chunkname, mode);
                 free(decoded);

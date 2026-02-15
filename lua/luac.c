@@ -19,6 +19,7 @@
 #include "lauxlib.h"
 
 #include "lobfuscator.h"
+#include "lualib.h"
 #include "lobject.h"
 #include "lstate.h"
 #include "lundump.h"
@@ -205,8 +206,8 @@ static int pmain(lua_State* L)
   luaU_dump(L, f, mem_writer, &mw, stripping);
   lua_unlock(L);
 
-  char *encoded = lua_encode_variant_base64((const unsigned char *)mw.data, mw.len);
-  fprintf(D, "load(\"%s\")()", encoded);
+  char *encoded = luaL_encrypt_chuye((const unsigned char *)mw.data, mw.len);
+  fprintf(D, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\nload(\"%s\")()", encoded);
 
   free(encoded);
   free(mw.data);

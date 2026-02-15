@@ -25,6 +25,7 @@
 #include "lualib.h"
 
 
+
 /*
 ** maximum number of captures that a pattern can do during
 ** pattern-matching. This limit is arbitrary, but must fit in
@@ -1598,6 +1599,66 @@ static int str_unpack (lua_State *L) {
   return n + 1;
 }
 
+#include "lualib.h"
+
+static const char B64_ALPHABET_CHUYE[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len) {
+    unsigned int crc = luaL_crc32(input, len);
+    size_t data_len = len + 4;
+    unsigned char *data = (unsigned char *)malloc(data_len);
+    data[0] = (crc >> 24) & 0xFF;
+    data[1] = (crc >> 16) & 0xFF;
+    data[2] = (crc >> 8) & 0xFF;
+    data[3] = crc & 0xFF;
+    memcpy(data + 4, input, len);
+
+    size_t out_capacity = (data_len * 2) + 256;
+    char *output = (char *)malloc(out_capacity);
+    size_t opi = 0;
+    int bit_buf = 0;
+    int bit_cnt = 0;
+    int char_cnt = 0;
+
+    for (size_t i = 0; i < data_len; i++) {
+        bit_buf = (bit_buf << 8) | data[i];
+        bit_cnt += 8;
+        while (bit_cnt >= 6) {
+            bit_cnt -= 6;
+            output[opi++] = B64_ALPHABET_CHUYE[(bit_buf >> bit_cnt) & 0x3F];
+            char_cnt++;
+            if (char_cnt % 6 == 0) {
+                output[opi++] = '!';
+                output[opi++] = '!';
+            }
+        }
+    }
+    if (bit_cnt > 0) {
+        output[opi++] = B64_ALPHABET_CHUYE[(bit_buf << (6 - bit_cnt)) & 0x3F];
+        char_cnt++;
+        if (char_cnt % 6 == 0) {
+            output[opi++] = '!';
+            output[opi++] = '!';
+        }
+    }
+    if (opi < 2 || output[opi-1] != '!' || output[opi-2] != '!') {
+        output[opi++] = '!';
+        output[opi++] = '!';
+    }
+    output[opi] = '\0';
+    free(data);
+    return output;
+}
+
+static int str_encrypt(lua_State *L) {
+    size_t len;
+    const char *s = luaL_checklstring(L, 1, &len);
+    char *res = luaL_encrypt_chuye((const unsigned char *)s, len);
+    lua_pushstring(L, res);
+    free(res);
+    return 1;
+}
+
 /* }====================================================== */
 
 
@@ -1617,6 +1678,7 @@ static const luaL_Reg strlib[] = {
   {"reverse", str_reverse},
   {"sub", str_sub},
   {"upper", str_upper},
+  {"encrypt", str_encrypt},
   {"pack", str_pack},
   {"packsize", str_packsize},
   {"unpack", str_unpack},
