@@ -402,16 +402,18 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
     unsigned int whole_crc = (decoded[4] << 24) | (decoded[5] << 16) | (decoded[6] << 8) | decoded[7];
     int total = (decoded[8] << 8) | decoded[9];
     int index = (decoded[10] << 8) | decoded[11];
+    int status;
 
-    lua_getfield(L, LUA_REGISTRYINDEX, "CHUYE_CHUNKS");
-    if (lua_isnil(L, -1)) {
+    lua_settop(L, 4); // Keep arguments: string, chunkname, mode, env
+    lua_getfield(L, LUA_REGISTRYINDEX, "CHUYE_CHUNKS"); // Index 5
+    if (lua_isnil(L, 5)) {
         lua_pop(L, 1);
         lua_newtable(L);
         lua_pushvalue(L, -1);
         lua_setfield(L, LUA_REGISTRYINDEX, "CHUYE_CHUNKS");
     }
 
-    if (lua_rawgeti(L, -1, (lua_Integer)whole_crc) == LUA_TNIL) {
+    if (lua_rawgeti(L, 5, (lua_Integer)whole_crc) == LUA_TNIL) { // Index 6
         lua_pop(L, 1);
         lua_newtable(L);
         lua_pushinteger(L, total);
@@ -419,21 +421,21 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
         lua_pushinteger(L, 0);
         lua_setfield(L, -2, "count");
         lua_pushvalue(L, -1);
-        lua_rawseti(L, -3, (lua_Integer)whole_crc);
+        lua_rawseti(L, 5, (lua_Integer)whole_crc);
     }
 
-    if (lua_rawgeti(L, -1, (lua_Integer)index) == LUA_TNIL) {
+    if (lua_rawgeti(L, 6, (lua_Integer)index) == LUA_TNIL) {
         lua_pop(L, 1);
         lua_pushlstring(L, (const char *)decoded + 12, dlen - 12);
-        lua_rawseti(L, -2, (lua_Integer)index);
+        lua_rawseti(L, 6, (lua_Integer)index);
 
-        lua_getfield(L, -1, "count");
+        lua_getfield(L, 6, "count");
         int count = (int)lua_tointeger(L, -1) + 1;
         lua_pop(L, 1);
         lua_pushinteger(L, count);
-        lua_setfield(L, -2, "count");
+        lua_setfield(L, 6, "count");
 
-        lua_getfield(L, -1, "total");
+        lua_getfield(L, 6, "total");
         int expected = (int)lua_tointeger(L, -1);
         lua_pop(L, 1);
 
@@ -441,23 +443,25 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
             luaL_Buffer b;
             luaL_buffinit(L, &b);
             for (int i = 1; i <= total; i++) {
-                lua_rawgeti(L, -1, i);
+                lua_rawgeti(L, 6, i);
                 luaL_addvalue(&b);
             }
-            luaL_pushresult(&b);
+            luaL_pushresult(&b); // Index 7
             size_t final_len;
-            const char *payload = lua_tolstring(L, -1, &final_len);
+            const char *payload = lua_tolstring(L, 7, &final_len);
 
             char *decrypted = (char *)malloc(final_len);
             for (size_t i = 0; i < final_len; i++) decrypted[i] = payload[i] ^ 0x77;
 
-            int status = luaL_loadbufferx(L, decrypted, final_len, "=(chuye)", "b");
+            status = luaL_loadbufferx(L, decrypted, final_len, "=(chuye)", "b");
             free(decrypted);
 
             lua_pushnil(L);
-            lua_rawseti(L, -5, (lua_Integer)whole_crc);
+            lua_rawseti(L, 5, (lua_Integer)whole_crc);
 
             free(decoded);
+            // Stack: [... CHUYE_CHUNKS, chunk_table, payload, compiled_func]
+            // We need compiled_func at the top for load_aux
             return load_aux(L, status, envidx);
         }
     } else {

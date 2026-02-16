@@ -70,7 +70,7 @@
 /* ISO C definitions */
 #define l_popen(L,c,m)  \
 	  ((void)((void)c, m), \
-	  luaL_error(L, "'popen' not supported"), \
+	  luaL_error(L, "不支持 'popen'"), \
 	  (FILE*)0)
 #define l_pclose(L,file)		((void)L, (void)file, -1)
 
@@ -195,7 +195,7 @@ static int f_tostring (lua_State *L) {
 static FILE *tofile (lua_State *L) {
   LStream *p = tolstream(L);
   if (isclosed(p))
-    luaL_error(L, "attempt to use a closed file");
+    luaL_error(L, "尝试使用一个已关闭的文件");
   lua_assert(p->f);
   return p->f;
 }
@@ -265,7 +265,7 @@ static void opencheck (lua_State *L, const char *fname, const char *mode) {
   LStream *p = newfile(L);
   p->f = fopen(fname, mode);
   if (p->f == NULL)
-    luaL_error(L, "cannot open file '%s' (%s)", fname, strerror(errno));
+    luaL_error(L, "无法打开文件 '%s' (%s)", fname, strerror(errno));
 }
 
 
@@ -311,7 +311,7 @@ static FILE *getiofile (lua_State *L, const char *findex) {
   lua_getfield(L, LUA_REGISTRYINDEX, findex);
   p = (LStream *)lua_touserdata(L, -1);
   if (isclosed(p))
-    luaL_error(L, "standard %s file is closed", findex + IOPREF_LEN);
+    luaL_error(L, "标准 %s 文件已关闭", findex + IOPREF_LEN);
   return p->f;
 }
 
@@ -683,7 +683,7 @@ static int io_readline (lua_State *L) {
   int i;
   int n = (int)lua_tointeger(L, lua_upvalueindex(2));
   if (isclosed(p))  /* file is already closed? */
-    return luaL_error(L, "file is already closed");
+    return luaL_error(L, "文件已经关闭");
   lua_settop(L , 1);
   luaL_checkstack(L, n, "too many arguments");
   for (i = 1; i <= n; i++)  /* push arguments to 'g_read' */

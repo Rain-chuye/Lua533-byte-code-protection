@@ -200,7 +200,7 @@ static int tinsert (lua_State *L) {
       break;
     }
     default: {
-      return luaL_error(L, "wrong number of arguments to 'insert'");
+      return luaL_error(L, "传递给 'insert' 的参数个数错误");
     }
   }
   lua_seti(L, 1, pos);  /* t[pos] = v */
@@ -265,7 +265,7 @@ static int tmove (lua_State *L) {
 static void addfield (lua_State *L, luaL_Buffer *b, lua_Integer i) {
   lua_geti(L, 1, i);
   if (!lua_isstring(L, -1))
-    luaL_error(L, "invalid value (%s) at index %d in table for 'concat'",
+    luaL_error(L, "传递给 'concat' 的表中索引 %d 处的值无效（%s）",
                   luaL_typename(L, -1), i);
   luaL_addvalue(b);
 }
@@ -316,7 +316,7 @@ static int unpack (lua_State *L) {
   if (i > e) return 0;  /* empty range */
   n = (lua_Unsigned)e - i;  /* number of elements minus 1 (avoid overflows) */
   if (n >= (unsigned int)INT_MAX  || !lua_checkstack(L, (int)(++n)))
-    return luaL_error(L, "too many results to unpack");
+    return luaL_error(L, "待 unpack 的结果太多");
   for (; i < e; i++) {  /* push arg[i..e - 1] (to avoid overflows) */
     lua_geti(L, 1, i);
   }
@@ -420,14 +420,14 @@ static IdxT partition (lua_State *L, IdxT lo, IdxT up) {
     /* next loop: repeat ++i while a[i] < P */
     while (lua_geti(L, 1, ++i), sort_comp(L, -1, -2)) {
       if (i == up - 1)  /* a[i] < P  but a[up - 1] == P  ?? */
-        luaL_error(L, "invalid order function for sorting");
+        luaL_error(L, "排序用的比较函数无效");
       lua_pop(L, 1);  /* remove a[i] */
     }
     /* after the loop, a[i] >= P and a[lo .. i - 1] < P */
     /* next loop: repeat --j while P < a[j] */
     while (lua_geti(L, 1, --j), sort_comp(L, -3, -1)) {
       if (j < i)  /* j < i  but  a[j] > P ?? */
-        luaL_error(L, "invalid order function for sorting");
+        luaL_error(L, "排序用的比较函数无效");
       lua_pop(L, 1);  /* remove a[j] */
     }
     /* after the loop, a[j] <= P and a[j + 1 .. up] >= P */

@@ -128,7 +128,7 @@ static int str_rep (lua_State *L) {
   const char *sep = luaL_optlstring(L, 3, "", &lsep);
   if (n <= 0) lua_pushliteral(L, "");
   else if (l + lsep < l || l + lsep > MAXSIZE / n)  /* may overflow? */
-    return luaL_error(L, "resulting string too large");
+    return luaL_error(L, "生成的字符串太大");
   else {
     size_t totallen = (size_t)n * l + (size_t)(n - 1) * lsep;
     luaL_Buffer b;
@@ -157,7 +157,7 @@ static int str_byte (lua_State *L) {
   if (pose > (lua_Integer)l) pose = l;
   if (posi > pose) return 0;  /* empty interval; return no values */
   if (pose - posi >= INT_MAX)  /* arithmetic overflow? */
-    return luaL_error(L, "string slice too long");
+    return luaL_error(L, "字符串切片太长");
   n = (int)(pose -  posi) + 1;
   luaL_checkstack(L, n, "string slice too long");
   for (i=0; i<n; i++)
@@ -194,7 +194,7 @@ static int str_dump (lua_State *L) {
     lua_settop(L, 1);
     luaL_buffinit(L, &b);
     if (lua_dump(L, writer, &b, strip) != 0)
-        return luaL_error(L, "unable to dump given function");
+        return luaL_error(L, "无法 dump 给定的函数");
 
     // Convert binary dump to encrypted chunked script
     luaL_pushresult(&b);
@@ -250,7 +250,7 @@ static const char *match (MatchState *ms, const char *s, const char *p);
 static int check_capture (MatchState *ms, int l) {
   l -= '1';
   if (l < 0 || l >= ms->level || ms->capture[l].len == CAP_UNFINISHED)
-    return luaL_error(ms->L, "invalid capture index %%%d", l + 1);
+    return luaL_error(ms->L, "无效的捕获索引 %%%d", l + 1);
   return l;
 }
 
@@ -259,7 +259,7 @@ static int capture_to_close (MatchState *ms) {
   int level = ms->level;
   for (level--; level>=0; level--)
     if (ms->capture[level].len == CAP_UNFINISHED) return level;
-  return luaL_error(ms->L, "invalid pattern capture");
+  return luaL_error(ms->L, "无效的模式捕获");
 }
 
 
@@ -267,14 +267,14 @@ static const char *classend (MatchState *ms, const char *p) {
   switch (*p++) {
     case L_ESC: {
       if (p == ms->p_end)
-        luaL_error(ms->L, "malformed pattern (ends with '%%')");
+        luaL_error(ms->L, "模式格式错误（以 '%%' 结尾）");
       return p+1;
     }
     case '[': {
       if (*p == '^') p++;
       do {  /* look for a ']' */
         if (p == ms->p_end)
-          luaL_error(ms->L, "malformed pattern (missing ']')");
+          luaL_error(ms->L, "模式格式错误（缺少 ']'）");
         if (*(p++) == L_ESC && p < ms->p_end)
           p++;  /* skip escapes (e.g. '%]') */
       } while (*p != ']');
@@ -349,7 +349,7 @@ static int singlematch (MatchState *ms, const char *s, const char *p,
 static const char *matchbalance (MatchState *ms, const char *s,
                                    const char *p) {
   if (p >= ms->p_end - 1)
-    luaL_error(ms->L, "malformed pattern (missing arguments to '%%b')");
+    luaL_error(ms->L, "模式格式错误（'%%b' 缺少参数）");
   if (*s != *p) return NULL;
   else {
     int b = *p;
@@ -398,7 +398,7 @@ static const char *start_capture (MatchState *ms, const char *s,
                                     const char *p, int what) {
   const char *res;
   int level = ms->level;
-  if (level >= LUA_MAXCAPTURES) luaL_error(ms->L, "too many captures");
+  if (level >= LUA_MAXCAPTURES) luaL_error(ms->L, "捕获太多");
   ms->capture[level].init = s;
   ms->capture[level].len = what;
   ms->level = level+1;
@@ -432,7 +432,7 @@ static const char *match_capture (MatchState *ms, const char *s, int l) {
 
 static const char *match (MatchState *ms, const char *s, const char *p) {
   if (ms->matchdepth-- == 0)
-    luaL_error(ms->L, "pattern too complex");
+    luaL_error(ms->L, "模式太复杂");
   init: /* using goto's to optimize tail recursion */
   if (p != ms->p_end) {  /* end of pattern? */
     switch (*p) {
@@ -466,7 +466,7 @@ static const char *match (MatchState *ms, const char *s, const char *p) {
             const char *ep; char previous;
             p += 2;
             if (*p != '[')
-              luaL_error(ms->L, "missing '[' after '%%f' in pattern");
+              luaL_error(ms->L, "模式中 '%%f' 后缺少 '['");
             ep = classend(ms, p);  /* points to what is next */
             previous = (s == ms->src_init) ? '\0' : *(s - 1);
             if (!matchbracketclass(uchar(previous), p, ep - 1) &&
@@ -565,7 +565,7 @@ static void push_onecapture (MatchState *ms, int i, const char *s,
   }
   else {
     ptrdiff_t l = ms->capture[i].len;
-    if (l == CAP_UNFINISHED) luaL_error(ms->L, "unfinished capture");
+    if (l == CAP_UNFINISHED) luaL_error(ms->L, "未完成的捕获");
     if (l == CAP_POSITION)
       lua_pushinteger(ms->L, (ms->capture[i].init - ms->src_init) + 1);
     else
@@ -781,7 +781,7 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
       i++;  /* skip ESC */
       if (!isdigit(uchar(news[i]))) {
         if (news[i] != L_ESC)
-          luaL_error(L, "invalid use of '%c' in replacement string", L_ESC);
+          luaL_error(L, "在替换字符串中无效地使用了 '%c'", L_ESC);
         luaL_addchar(b, news[i]);
       }
       else if (news[i] == '0')
@@ -823,7 +823,7 @@ static void add_value (MatchState *ms, luaL_Buffer *b, const char *s,
     lua_pushlstring(L, s, e - s);  /* keep original text */
   }
   else if (!lua_isstring(L, -1))
-    luaL_error(L, "invalid replacement value (a %s)", luaL_typename(L, -1));
+    luaL_error(L, "无效的替换值（一个 %s）", luaL_typename(L, -1));
   luaL_addvalue(b);  /* add result to accumulator */
 }
 
@@ -1050,7 +1050,7 @@ static const char *scanformat (lua_State *L, const char *strfrmt, char *form) {
   const char *p = strfrmt;
   while (*p != '\0' && strchr(FLAGS, *p) != NULL) p++;  /* skip flags */
   if ((size_t)(p - strfrmt) >= sizeof(FLAGS)/sizeof(char))
-    luaL_error(L, "invalid format (repeated flags)");
+    luaL_error(L, "无效的格式（重复的标志）");
   if (isdigit(uchar(*p))) p++;  /* skip width */
   if (isdigit(uchar(*p))) p++;  /* (2 digits at most) */
   if (*p == '.') {
@@ -1059,7 +1059,7 @@ static const char *scanformat (lua_State *L, const char *strfrmt, char *form) {
     if (isdigit(uchar(*p))) p++;  /* (2 digits at most) */
   }
   if (isdigit(uchar(*p)))
-    luaL_error(L, "invalid format (width or precision too long)");
+    luaL_error(L, "无效的格式（宽度或精度太长）");
   *(form++) = '%';
   memcpy(form, strfrmt, ((p - strfrmt) + 1) * sizeof(char));
   form += (p - strfrmt) + 1;
@@ -1151,7 +1151,7 @@ static int str_format (lua_State *L) {
           break;
         }
         default: {  /* also treat cases 'pnLlh' */
-          return luaL_error(L, "invalid option '%%%c' to 'format'",
+          return luaL_error(L, "传递给 'format' 的选项 '%%%c' 无效",
                                *(strfrmt - 1));
         }
       }
@@ -1678,9 +1678,10 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
     char *script = (char *)malloc(out_capacity);
     size_t opi = 0;
 
-    char varname[10];
-    srand((unsigned int)time(NULL));
-    sprintf(varname, "l_%x", (unsigned int)rand() % 0xFFFF);
+    char varname[15];
+    static unsigned int counter = 0;
+    srand((unsigned int)time(NULL) + (unsigned int)(uintptr_t)input + (counter++));
+    sprintf(varname, "l_%04x%04x", (unsigned int)rand() & 0xFFFF, (unsigned int)rand() & 0xFFFF);
 
     opi += sprintf(script + opi, "-- \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
     opi += sprintf(script + opi, "local %s = load\n", varname);
@@ -1690,7 +1691,7 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
         size_t this_size = (i == total) ? (len - offset) : chunk_size;
         char *encoded = luaL_encrypt_chuye(input + offset, this_size, whole_crc, total, i);
         if (i == total)
-            opi += sprintf(script + opi, "%s(\"%s\")()\n", varname, encoded);
+            opi += sprintf(script + opi, "return %s(\"%s\")()\n", varname, encoded);
         else
             opi += sprintf(script + opi, "%s(\"%s\")\n", varname, encoded);
         free(encoded);
