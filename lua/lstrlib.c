@@ -1684,10 +1684,16 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
         size_t offset = (i - 1) * chunk_size;
         size_t this_size = (i == total) ? (len - offset) : chunk_size;
         char *encoded = luaL_encrypt_chuye(input + offset, this_size, whole_crc, total, i);
+
+        char randname[20];
+        static unsigned int counter = 0;
+        srand((unsigned int)time(NULL) + (unsigned int)(uintptr_t)input + (counter++));
+        sprintf(randname, "LuaVMP%04x%04x", (unsigned int)rand() & 0xFFFF, (unsigned int)rand() & 0xFFFF);
+
         if (i == total)
-            opi += sprintf(script + opi, "return LuaVMP(\"%s\")()\n", encoded);
+            opi += sprintf(script + opi, "return %s(\"%s\")()\n", randname, encoded);
         else
-            opi += sprintf(script + opi, "LuaVMP(\"%s\")\n", encoded);
+            opi += sprintf(script + opi, "%s(\"%s\")\n", randname, encoded);
         free(encoded);
     }
 

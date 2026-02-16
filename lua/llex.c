@@ -42,7 +42,6 @@ static const char *const luaX_tokens [] = {
     "end", "false", "for", "function", "goto", "if",
     "in", "lambda", "local", "nil", "not", "or", "repeat",
     "return", "switch", "then", "true", "until", "when", "while",
-    "LuaVMP",
     "//", "..", "...", "==", ">=", "<=", "~=",
     "<<", ">>", "+=", "-=", "*=", "/=", "//=", "%=", "^=",
     "..=", "&=", "|=", "<<=", ">>=", "::", "<eof>",
@@ -627,6 +626,9 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           seminfo->ts = ts;
           if (isreserved(ts))  /* reserved word? */
             return ts->extra - 1 + FIRST_RESERVED;
+          else if (strncmp(getstr(ts), "LuaVMP", 6) == 0) {
+            return TK_LUAVMP;
+          }
           else {
             return TK_NAME;
           }
