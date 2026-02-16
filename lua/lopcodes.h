@@ -233,11 +233,17 @@ OP_TBC,
 OP_NEWARRAY,/*	A B C	R(A) := {} (size = B,C)				*/
     OP_TFOREACH,/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));	*/
     OP_TERNARY,
-    OP_VIRTUAL
+    OP_VIRTUAL,
+    OP_FUSE_GETSUB,
+    OP_FUSE_GETADD,
+    OP_FUSE_GETGETSUB,
+    OP_FAST_DIST,
+    OP_FUSE_NOP,
+    OP_FUSE_PARTICLE_DIST
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_VIRTUAL) + 1)
+#define NUM_OPCODES	(cast(int, OP_FUSE_PARTICLE_DIST) + 1)
 
 
 

@@ -70,6 +70,12 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "FOREACH",
   "TERNARY",
   "VIRTUAL",
+  "FUSE_GETSUB",
+  "FUSE_GETADD",
+  "FUSE_GETGETSUB",
+  "FAST_DIST",
+  "FUSE_NOP",
+  "FUSE_PARTICLE_DIST",
   NULL
 };
 
@@ -130,4 +136,10 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, OpArgN, OpArgU, iABC)		/* OP_TFOREACH */
  ,opmode(0, 1, OpArgR, OpArgK, iABC)		/* OP_TERNARY */
  ,opmode(0, 0, OpArgN, OpArgN, iAx)		/* OP_VIRTUAL */
+ ,opmode(0, 1, OpArgR, OpArgK, iABC)		/* OP_FUSE_GETSUB */
+ ,opmode(0, 1, OpArgR, OpArgK, iABC)		/* OP_FUSE_GETADD */
+ ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FUSE_GETGETSUB */
+ ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FAST_DIST */
+ ,opmode(0, 0, OpArgN, OpArgN, iABC)		/* OP_FUSE_NOP */
+ ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FUSE_PARTICLE_DIST */
 };

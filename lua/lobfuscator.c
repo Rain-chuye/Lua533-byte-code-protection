@@ -21,15 +21,112 @@ void lua_start_security_thread(void) {
     /* Security thread disabled */
 }
 
+static void fuse_instructions_internal(Proto *f) {
+    if (f->sizecode < 2) return;
+
+    /* Pattern: FAST_DIST (x*x + y*y)^0.5 */
+    if (f->sizecode >= 4) {
+        for (int i = 0; i < f->sizecode - 3; i++) {
+            Instruction i1 = f->code[i];
+            Instruction i2 = f->code[i+1];
+            Instruction i3 = f->code[i+2];
+            Instruction i4 = f->code[i+3];
+            if (GET_OPCODE(i1) == OP_MUL && GETARG_B(i1) == GETARG_C(i1) &&
+                GET_OPCODE(i2) == OP_MUL && GETARG_B(i2) == GETARG_C(i2) &&
+                GET_OPCODE(i3) == OP_ADD && GETARG_B(i3) == GETARG_A(i1) && GETARG_C(i3) == GETARG_A(i2) &&
+                GET_OPCODE(i4) == OP_POW && GETARG_B(i4) == GETARG_A(i3)) {
+                int ra = GETARG_A(i4);
+                int rb = GETARG_B(i1);
+                int rc = GETARG_B(i2);
+                f->code[i] = CREATE_ABC(OP_FAST_DIST, ra, rb, rc);
+                f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                f->code[i+2] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                f->code[i+3] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                i += 3;
+            }
+        }
+    }
+
+    for (int i = 0; i < f->sizecode - 1; i++) {
+        Instruction inst1 = f->code[i];
+        Instruction inst2 = f->code[i+1];
+        OpCode op1 = GET_OPCODE(inst1);
+        OpCode op2 = GET_OPCODE(inst2);
+
+        if (op1 == OP_FUSE_NOP) continue;
+
+        /* Pattern 1: Ra = Rb.Rc; Ra = Ra - Rd -> Ra = FUSE_GETSUB(Rb, Rc, Rd) */
+        if (op1 == OP_GETTABLE && op2 == OP_SUB &&
+            GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
+            int ra = GETARG_A(inst1);
+            int rb = GETARG_B(inst1);
+            int rc = GETARG_C(inst1);
+            int rd = GETARG_C(inst2);
+            f->code[i] = CREATE_ABC(OP_FUSE_GETSUB, ra, rb, rc);
+            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, rd);
+            i++; continue;
+        }
+        else if (op1 == OP_GETTABLE && op2 == OP_ADD &&
+            GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
+            int ra = GETARG_A(inst1);
+            int rb = GETARG_B(inst1);
+            int rc = GETARG_C(inst1);
+            int rd = GETARG_C(inst2);
+            f->code[i] = CREATE_ABC(OP_FUSE_GETADD, ra, rb, rc);
+            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, rd);
+            i++; continue;
+        }
+        /* Pattern 2: Ra = Rb.Rc; Rd = Re.Rf; Ra = Ra - Rd -> Ra = FUSE_GETGETSUB(Rb, Rc, Re, Rf) */
+        if (i < f->sizecode - 2) {
+            Instruction inst3 = f->code[i+2];
+            if (op1 == OP_GETTABLE && GET_OPCODE(inst2) == OP_GETTABLE && GET_OPCODE(inst3) == OP_SUB &&
+                GETARG_A(inst1) == GETARG_B(inst3) && GETARG_A(inst2) == GETARG_C(inst3)) {
+                int ra = GETARG_A(inst3);
+                int rb = GETARG_B(inst1);
+                int rc = GETARG_C(inst1);
+                int re = GETARG_B(inst2);
+                int rf = GETARG_C(inst2);
+                f->code[i] = CREATE_ABC(OP_FUSE_GETGETSUB, ra, rb, rc);
+                f->code[i+1] = CREATE_Ax(OP_EXTRAARG, (re << 9) | rf);
+                f->code[i+2] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                i += 2; continue;
+            }
+        }
+    }
+
+    /* Pattern 4: PARTICLE_DIST (Corrected match with EXTRAARG) */
+    if (f->sizecode >= 7) {
+        for (int i = 0; i < f->sizecode - 6; i++) {
+            Instruction i1 = f->code[i];
+            Instruction i4 = f->code[i+3];
+            Instruction i7 = f->code[i+6];
+            if (GET_OPCODE(i1) == OP_FUSE_GETGETSUB && GET_OPCODE(i4) == OP_FUSE_GETGETSUB && GET_OPCODE(i7) == OP_FAST_DIST) {
+                if (GETARG_A(i1) == GETARG_B(i7) && GETARG_A(i4) == GETARG_C(i7)) {
+                    int ra = GETARG_A(i7);
+                    int p1 = GETARG_B(i1);
+                    int p2 = GETARG_Ax(f->code[i+1]); // From EXTRAARG of first FUSE_GETGETSUB
+                    int kx = GETARG_C(i1);
+                    int ky = GETARG_C(i4);
+                    f->code[i] = CREATE_ABC(OP_FUSE_PARTICLE_DIST, ra, (int)(p1 & 0x1FF), (int)(p2 & 0x1FF));
+                    f->code[i+1] = CREATE_Ax(OP_EXTRAARG, kx);
+                    f->code[i+2] = CREATE_Ax(OP_EXTRAARG, ky);
+                    f->code[i+3] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    f->code[i+4] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    f->code[i+5] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    f->code[i+6] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    i += 6;
+                }
+            }
+        }
+    }
+}
+
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
     if (f->sizecode == 0) return;
-
+    fuse_instructions_internal(f);
     int old_sizecode = f->sizecode;
-
     lu_byte *is_target = luaM_newvector(L, old_sizecode, lu_byte);
     memset(is_target, 0, old_sizecode);
-
-    // 1. Identify jump targets
     for (int i = 0; i < old_sizecode; i++) {
         Instruction inst = f->code[i];
         OpCode op = GET_OPCODE(inst);
@@ -40,35 +137,21 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
         if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET || op == OP_TFORCALL) {
             if (i + 1 < old_sizecode) is_target[i + 1] = 1;
         }
-        if (op == OP_LOADKX || op == OP_SETLIST) {
-            if (op == OP_LOADKX || (op == OP_SETLIST && GETARG_C(inst) == 0)) {
-                if (i + 1 < old_sizecode) is_target[i + 1] = 1;
-            }
-        }
     }
-
     Instruction *temp_vcode = luaM_newvector(L, old_sizecode * 2, Instruction);
     int vcode_ptr = 0;
-
     for (int i = 0; i < old_sizecode; ) {
         int start = i;
         int count = 0;
         while (i < old_sizecode) {
             Instruction inst = f->code[i];
             OpCode op = GET_OPCODE(inst);
-
-            // Strictly safe instructions that never yield or skip instructions
-            int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADNIL ||
-                           op == OP_GETUPVAL);
-
+            int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADNIL || op == OP_GETUPVAL);
             if (!is_safe) break;
             if (i > start && is_target[i]) break;
-
-            i++;
-            count++;
+            i++; count++;
             if (count >= 255) break;
         }
-
         if (count > 1 && vcode_ptr < (1 << 26)) {
             int vindex = vcode_ptr;
             temp_vcode[vcode_ptr++] = (Instruction)count;
@@ -83,13 +166,11 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             i = start + 1;
         }
     }
-
     if (vcode_ptr > 0) {
         f->vcode = luaM_newvector(L, vcode_ptr, Instruction);
         memcpy(f->vcode, temp_vcode, vcode_ptr * sizeof(Instruction));
         f->sizevcode = vcode_ptr;
     }
-
     luaM_freearray(L, temp_vcode, old_sizecode * 2);
     luaM_freearray(L, is_target, old_sizecode);
 }
@@ -101,11 +182,11 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
         seeded = 1;
     }
 
-    // Increase stack size to provide slots for dynamic decryption (RK values)
+    // Increase stack size for instruction fusion and dynamic decryption
     f->scratch_base = f->maxstacksize;
-    f->maxstacksize += 2;
+    f->maxstacksize += 4;
     if (f->maxstacksize > 255) f->maxstacksize = 255;
-    if (f->scratch_base > 253) f->scratch_base = 253;
+    if (f->scratch_base > 251) f->scratch_base = 251;
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {
@@ -142,13 +223,6 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
         OpCode op = GET_OPCODE(f->code[i]);
         SET_OPCODE(f->code[i], inv_map[op]);
     }
-    for (int i = 0; i < f->sizevcode; i++) {
-        // VCode for OP_VIRTUAL stores raw instructions after the first element (count)
-        // Wait, virtualize_proto_internal stores raw instructions in temp_vcode.
-        // Let's check the structure of vcode.
-        // It starts with 'count', then 'count' instructions.
-    }
-    // Re-check virtualize_proto_internal logic for vcode.
     int vptr = 0;
     while (vptr < f->sizevcode) {
         int count = (int)f->vcode[vptr++];
@@ -159,7 +233,23 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
         }
     }
 
-    /* 3. Apply Dynamic Encryption with Per-Function Seed */
+    /* 3. Transform vcode to Custom ISA */
+    vptr = 0;
+    while (vptr < f->sizevcode) {
+        int count = (int)f->vcode[vptr++];
+        for (int j = 0; j < count; j++) {
+            Instruction inst = f->vcode[vptr];
+            OpCode op = (OpCode)((inst >> POS_OP) & 0x3F);
+            int a = (inst >> POS_A) & 0xFF;
+            int b = (inst >> POS_B) & 0x1FF;
+            int c = (inst >> POS_C) & 0x1FF;
+            /* New Layout: OP[0..5] | B[6..14] | A[15..22] | C[23..31] */
+            Instruction vinst = (op) | (b << 6) | (a << 15) | (c << 23);
+            f->vcode[vptr++] = ~vinst;
+        }
+    }
+
+    /* 4. Apply Dynamic Encryption with Per-Function Seed */
     f->inst_seed = (unsigned int)rand();
     for (int i = 0; i < f->sizecode; i++) {
         f->code[i] = ENCRYPT_INST(f->code[i], i, f->inst_seed);

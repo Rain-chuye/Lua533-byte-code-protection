@@ -1,0 +1,61 @@
+
+main <perf.lua:0,0> (58 instructions at 0x563907b95e90)
+0+ params, 24 slots, 1 upvalue, 23 locals, 14 constants, 0 functions
+	1	[1]	NEWTABLE 	0 0 0
+	2	[1]	VIRTUAL  	-1
+	3	[1]	EXTRAARG 	-1	; -3703673481951288243
+	4	[1]	EXTRAARG 	-1	; -3703673481951288243
+	5	[1]	FORPREP  	1 14	; to 20
+	6	[1]	NEWTABLE 	5 0 3
+	7	[1]	GETTABUP 	6 0 -4	; _ENV "math"
+	8	[1]	GETTABLE 	6 6 -5	; "random"
+	9	[1]	CALL     	6 1 2
+	10	[1]	SETTABLE 	5 -3 6	; "x" -
+	11	[1]	GETTABUP 	6 0 -4	; _ENV "math"
+	12	[1]	GETTABLE 	6 6 -5	; "random"
+	13	[1]	CALL     	6 1 2
+	14	[1]	SETTABLE 	5 -6 6	; "y" -
+	15	[1]	NEWTABLE 	6 0 2
+	16	[1]	SETTABLE 	6 -3 -8	; "x" -3703673481951288242
+	17	[1]	SETTABLE 	6 -6 -8	; "y" -3703673481951288242
+	18	[1]	SETTABLE 	5 -7 6	; "sv" -
+	19	[1]	SETTABLE 	0 4 5
+	20	[1]	FORLOOP  	1 -15	; to 6
+	21	[1]	GETTABUP 	1 0 -9	; _ENV "os"
+	22	[1]	GETTABLE 	1 1 -10	; "clock"
+	23	[1]	CALL     	1 1 2
+	24	[1]	VIRTUAL  	-5
+	25	[1]	EXTRAARG 	-1	; -3703673481951288243
+	26	[1]	EXTRAARG 	-1	; -3703673481951288243
+	27	[1]	FORPREP  	2 22	; to 50
+	28	[1]	VIRTUAL  	-9
+	29	[1]	EXTRAARG 	-1	; -3703673481951288243
+	30	[1]	EXTRAARG 	-1	; -3703673481951288243
+	31	[1]	FORPREP  	6 17	; to 49
+	32	[1]	GETTABLE 	10 0 9
+	33	[1]	VIRTUAL  	-13
+	34	[1]	EXTRAARG 	-1	; -3703673481951288243
+	35	[1]	EXTRAARG 	-1	; -3703673481951288243
+	36	[1]	FORPREP  	11 11	; to 48
+	37	[1]	GETTABLE 	15 0 14
+	38	[1]	FUSE_PARTICLE_DIST	18 10 -3
+	39	[1]	EXTRAARG 	-259	; count 258
+	40	[1]	EXTRAARG 	-262	; count 261
+	41	[1]	FUSE_NOP 	0
+	42	[1]	FUSE_NOP 	0
+	43	[1]	FUSE_NOP 	0
+	44	[1]	FUSE_NOP 	0
+	45	[1]	FUSE_NOP 	0
+	46	[1]	FUSE_NOP 	0
+	47	[1]	FUSE_NOP 	0
+	48	[1]	FORLOOP  	11 -12	; to 37
+	49	[1]	FORLOOP  	6 -18	; to 32
+	50	[1]	FORLOOP  	2 -23	; to 28
+	51	[1]	GETTABUP 	2 0 -13	; _ENV "print"
+	52	[1]	LOADK    	3 -14	; "Time:"
+	53	[1]	GETTABUP 	4 0 -9	; _ENV "os"
+	54	[1]	GETTABLE 	4 4 -10	; "clock"
+	55	[1]	CALL     	4 1 2
+	56	[1]	SUB      	4 4 1
+	57	[1]	CALL     	2 3 1
+	58	[1]	RETURN   	0 1

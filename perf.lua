@@ -1,0 +1,1 @@
+local points = {}; for i=1,500 do points[i]={x=math.random(), y=math.random(), sv={x=0,y=0}} end; local start = os.clock(); for f=1,100 do for i=1,500 do local p1 = points[i]; for j=1,500 do local p2 = points[j]; local dx, dy = p1.x - p2.x, p1.y - p2.y; local d = (dx*dx + dy*dy)^0.5; end end end; print('Time:', os.clock() - start)

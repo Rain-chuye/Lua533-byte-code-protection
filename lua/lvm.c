@@ -848,7 +848,7 @@ void luaV_execute (lua_State *L) {
     &&L_OP_TESTSET, &&L_OP_CALL, &&L_OP_TAILCALL, &&L_OP_RETURN, &&L_OP_FORLOOP,
     &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST, &&L_OP_CLOSURE,
     &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC, &&L_OP_NEWARRAY, &&L_OP_TFOREACH,
-    &&L_OP_TERNARY, &&L_OP_VIRTUAL
+    &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST
   };
 #endif
   CallInfo *ci = L->ci;
@@ -871,8 +871,16 @@ void luaV_execute (lua_State *L) {
       Instruction i;
       StkId ra;
       if (__builtin_expect(vpc && vcount > 0, 0)) {
-        i = *vpc++;
-        i = DECRYPT_INST(i, vpc_idx++, cl->p->inst_seed);
+        Instruction raw_i = *vpc++;
+        raw_i = DECRYPT_INST(raw_i, vpc_idx++, cl->p->inst_seed);
+        /* Decode Custom ISA: OP[0..5] | B[6..14] | A[15..22] | C[23..31] and bitwise NOT */
+        Instruction vi = ~raw_i;
+        OpCode v_op = (OpCode)(vi & 0x3F);
+        int v_b = (vi >> 6) & 0x1FF;
+        int v_a = (vi >> 15) & 0xFF;
+        int v_c = (vi >> 23) & 0x1FF;
+        /* Reconstruct standard instruction bits */
+        i = (v_op << POS_OP) | (v_a << POS_A) | (v_b << POS_B) | (v_c << POS_C);
         vcount--;
         ra = RA(i);
       } else {
@@ -931,6 +939,14 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_GETTABLE) {
         StkId rb = RB(i);
         TValue *rc = RKC(i);
+        if (ttistable(rb) && ttisinteger(rc)) {
+            Table *t = hvalue(rb);
+            lua_Integer idx = ivalue(rc);
+            if (idx > 0 && idx <= t->sizearray) {
+                setobj2s(L, ra, &t->array[idx - 1]);
+                vmbreak;
+            }
+        }
         gettableProtected(L, rb, rc, ra);
         vmbreak;
       }
@@ -1019,43 +1035,91 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_ADD) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        lua_Number nb; lua_Number nc;
         if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
-          setivalue(ra, intop(+, ib, ic));
+          setivalue(ra, intop(+, ivalue(rb), ivalue(rc)));
         }
-        else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-          setfltvalue(ra, luai_numadd(L, nb, nc));
+        else {
+          lua_Number nb, nc;
+          if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
+            setfltvalue(ra, luai_numadd(L, nb, nc));
+          }
+          else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_ADD)); }
         }
-        else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_ADD)); }
+        vmbreak;
+      }
+      vmcase(OP_FUSE_NOP) {
+        vmbreak;
+      }
+      vmcase(OP_FUSE_PARTICLE_DIST) {
+        Instruction next_i1 = *ci->u.l.savedpc++;
+        next_i1 = DECRYPT_INST(next_i1, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        Instruction next_i2 = *ci->u.l.savedpc++;
+        next_i2 = DECRYPT_INST(next_i2, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int p1_idx = GETARG_B(i);
+        int p2_idx = GETARG_C(i);
+        int kx_idx = GETARG_Ax(next_i1);
+        int ky_idx = GETARG_Ax(next_i2);
+        TValue *p1 = base + p1_idx;
+        TValue *p2 = base + p2_idx;
+        TValue *kx = ISK(kx_idx) ? k + RKASK(kx_idx) : base + kx_idx;
+        TValue *ky = ISK(ky_idx) ? k + RKASK(ky_idx) : base + ky_idx;
+        TValue v1, v2, v3, v4;
+
+        /* Fast string key lookup */
+        if (ttistable(p1) && ttistable(p2) && ttisshrstring(kx) && ttisshrstring(ky)) {
+            const TValue *s1 = luaH_getstr(hvalue(p1), tsvalue(kx));
+            const TValue *s2 = luaH_getstr(hvalue(p2), tsvalue(kx));
+            const TValue *s3 = luaH_getstr(hvalue(p1), tsvalue(ky));
+            const TValue *s4 = luaH_getstr(hvalue(p2), tsvalue(ky));
+            if (!ttisnil(s1) && !ttisnil(s2) && !ttisnil(s3) && !ttisnil(s4)) {
+                lua_Number n1=0, n2=0, n3=0, n4=0;
+                if (tonumber(s1, &n1) && tonumber(s2, &n2) && tonumber(s3, &n3) && tonumber(s4, &n4)) {
+                    setfltvalue(ra, sqrt((n1-n2)*(n1-n2) + (n3-n4)*(n3-n4)));
+                    vmbreak;
+                }
+            }
+        }
+        /* Fallback to slow path if needed */
+        gettableProtected(L, p1, kx, base + cl->p->scratch_base);
+        gettableProtected(L, base + p2_idx, kx, base + cl->p->scratch_base + 1);
+        gettableProtected(L, base + p1_idx, ky, base + cl->p->scratch_base + 2);
+        gettableProtected(L, base + p2_idx, ky, base + cl->p->scratch_base + 3);
+        ra = RA(i);
+        StkId tmp = base + cl->p->scratch_base;
+        lua_Number n1=0, n2=0, n3=0, n4=0;
+        if (tonumber(tmp, &n1) && tonumber(tmp+1, &n2) && tonumber(tmp+2, &n3) && tonumber(tmp+3, &n4)) {
+            setfltvalue(ra, sqrt((n1-n2)*(n1-n2) + (n3-n4)*(n3-n4)));
+        } else setfltvalue(ra, 0);
         vmbreak;
       }
       vmcase(OP_SUB) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        lua_Number nb; lua_Number nc;
         if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
-          setivalue(ra, intop(-, ib, ic));
+          setivalue(ra, intop(-, ivalue(rb), ivalue(rc)));
         }
-        else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-          setfltvalue(ra, luai_numsub(L, nb, nc));
+        else {
+          lua_Number nb, nc;
+          if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
+            setfltvalue(ra, luai_numsub(L, nb, nc));
+          }
+          else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_SUB)); }
         }
-        else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_SUB)); }
         vmbreak;
       }
       vmcase(OP_MUL) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        lua_Number nb; lua_Number nc;
         if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
-          setivalue(ra, intop(*, ib, ic));
+          setivalue(ra, intop(*, ivalue(rb), ivalue(rc)));
         }
-        else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-          setfltvalue(ra, luai_nummul(L, nb, nc));
+        else {
+          lua_Number nb, nc;
+          if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
+            setfltvalue(ra, luai_nummul(L, nb, nc));
+          }
+          else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_MUL)); }
         }
-        else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_MUL)); }
         vmbreak;
       }
       vmcase(OP_DIV) {  /* float division (always with floats) */
@@ -1472,18 +1536,92 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_VIRTUAL) {
         int vindex = GETARG_Ax(i);
-        /* Note: vpc/vcount are currently only safe for instructions that
-           do not trigger Lua metamethods or Lua-to-Lua calls,
-           as newframe resets them. */
         if (cl->p->vcode && vindex >= 0 && vindex < cl->p->sizevcode) {
-          uintptr_t base_ptr = (uintptr_t)cl->p->vcode;
-          uintptr_t offset = (uintptr_t)vindex * sizeof(Instruction);
-          // MBA: (a + b) == (a | b) + (a & b)
-          vpc = (Instruction*)((base_ptr | offset) + (base_ptr & offset));
+          Instruction *block_start = cl->p->vcode + vindex;
+          vpc = block_start;
           vpc_idx = vindex;
           Instruction vcount_raw = *vpc++;
           vcount = (int)DECRYPT_INST(vcount_raw, vpc_idx++, cl->p->inst_seed);
           ci->u.l.savedpc += (vcount - 1);
+        }
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETSUB) {
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int rd_idx = GETARG_Ax(next_i);
+        gettableProtected(L, RB(i), RKC(i), base + cl->p->scratch_base);
+        ra = RA(i);
+        TValue *v_res = base + cl->p->scratch_base;
+        TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+        if (ttisnumber(v_res) && ttisnumber(rd_val)) {
+          if (ttisinteger(v_res) && ttisinteger(rd_val)) {
+            setivalue(ra, intop(-, ivalue(v_res), ivalue(rd_val)));
+          } else {
+            lua_Number nb = 0, nd = 0;
+            tonumber(v_res, &nb); tonumber(rd_val, &nd);
+            setfltvalue(ra, luai_numsub(L, nb, nd));
+          }
+        } else {
+          setfltvalue(ra, 0);
+        }
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETADD) {
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int rd_idx = GETARG_Ax(next_i);
+        gettableProtected(L, RB(i), RKC(i), base + cl->p->scratch_base);
+        ra = RA(i);
+        TValue *v_res = base + cl->p->scratch_base;
+        TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+        if (ttisnumber(v_res) && ttisnumber(rd_val)) {
+          if (ttisinteger(v_res) && ttisinteger(rd_val)) {
+            setivalue(ra, intop(+, ivalue(v_res), ivalue(rd_val)));
+          } else {
+            lua_Number nb = 0, nd = 0;
+            tonumber(v_res, &nb); tonumber(rd_val, &nd);
+            setfltvalue(ra, luai_numadd(L, nb, nd));
+          }
+        } else {
+           setfltvalue(ra, 0);
+        }
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETGETSUB) {
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int extra = GETARG_Ax(next_i);
+        int re = (extra >> 9) & 0x1FF;
+        int rf = extra & 0x1FF;
+        StkId tmp1 = base + cl->p->scratch_base;
+        StkId tmp2 = tmp1 + 1;
+        /* First table access */
+        gettableProtected(L, RB(i), RKC(i), tmp1);
+        /* Re-evaluate pointers as stack might have moved */
+        tmp1 = base + cl->p->scratch_base;
+        tmp2 = tmp1 + 1;
+        gettableProtected(L, base + re, ISK(rf) ? get_rk_ptr(k, rf, tmp2 + 1) : base + rf, tmp2);
+        ra = RA(i);
+        tmp1 = base + cl->p->scratch_base;
+        tmp2 = tmp1 + 1;
+        if (ttisnumber(tmp1) && ttisnumber(tmp2)) {
+            lua_Number n1 = 0, n2 = 0;
+            tonumber(tmp1, &n1); tonumber(tmp2, &n2);
+            setfltvalue(ra, luai_numsub(L, n1, n2));
+        } else {
+            setfltvalue(ra, 0);
+        }
+        vmbreak;
+      }
+      vmcase(OP_FAST_DIST) {
+        TValue *rb = RB(i);
+        TValue *rc = RC(i);
+        lua_Number nb = 0, nc = 0;
+        if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
+          setfltvalue(ra, sqrt(nb * nb + nc * nc));
+        } else {
+          setfltvalue(ra, 0);
         }
         vmbreak;
       }
