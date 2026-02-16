@@ -15,6 +15,7 @@
 #include "lua.h"
 
 #include "lobfuscator.h"
+#include "lopcodes.h"
 #include "ldebug.h"
 #include "ldo.h"
 #include "lfunc.h"
@@ -127,6 +128,15 @@ static void LoadVCode (LoadState *S, Proto *f) {
   LoadVector(S, f->vcode, n);
 }
 
+static void LoadOpMap (LoadState *S, Proto *f) {
+  if (LoadByte(S)) {
+    f->op_map = luaM_newvector(S->L, NUM_OPCODES, lu_byte);
+    LoadVector(S, f->op_map, NUM_OPCODES);
+  } else {
+    f->op_map = NULL;
+  }
+}
+
 
 static void LoadFunction(LoadState *S, Proto *f, TString *psource);
 
@@ -226,6 +236,8 @@ static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
   f->maxstacksize = LoadByte(S);
   f->obfuscated = LoadByte(S);
   f->scratch_base = LoadInt(S);
+  f->inst_seed = LoadInt(S);
+  LoadOpMap(S, f);
   LoadCode(S, f);
   LoadVCode(S, f);
   LoadConstants(S, f);

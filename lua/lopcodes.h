@@ -86,10 +86,9 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 ** the following macros help to manipulate instructions
 */
 
-#include "lobfuscator.h"
-#define GET_OPCODE(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
+#define GET_OPCODE(i)	(cast(OpCode, ((i)>>POS_OP) & MASK1(SIZE_OP,0)))
 #define SET_OPCODE(i,o)	((i) = (((i)&MASK0(SIZE_OP,POS_OP)) | \
-		((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
+		((cast(Instruction, o)<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
 
 #define getarg(i,pos,size)	(cast(int, ((i)>>pos) & MASK1(size,0)))
 #define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
@@ -114,16 +113,16 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
 
 
-#define CREATE_ABC(o,a,b,c)	((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+#define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, b)<<POS_B) \
 			| (cast(Instruction, c)<<POS_C))
 
-#define CREATE_ABx(o,a,bc)	((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+#define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, bc)<<POS_Bx))
 
-#define CREATE_Ax(o,a)		((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+#define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_Ax))
 
 
@@ -283,8 +282,6 @@ enum OpArgMask {
 };
 
 LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
-LUAI_DDEC const lu_byte luaP_op_encode[64];
-LUAI_DDEC const lu_byte luaP_op_decode[64];
 
 #define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 3))
 #define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 4) & 3))

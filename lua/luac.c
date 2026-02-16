@@ -250,6 +250,8 @@ int main(int argc, char* argv[])
 #include "lobject.h"
 #include "lopcodes.h"
 
+#define GET_REAL_OPCODE(i, p) ((p)->op_map ? (OpCode)(p)->op_map[GET_OPCODE(i)] : GET_OPCODE(i))
+
 #define VOID(p)		((const void*)(p))
 
 static void PrintString(const TString* ts)
@@ -321,8 +323,8 @@ static void PrintCode(const Proto* f)
  for (pc=0; pc<n; pc++)
  {
   Instruction i=code[pc];
-  if (f->obfuscated) i = INDEXED_DECRYPT_INST(i, pc);
-  OpCode o=GET_OPCODE(i);
+  if (f->obfuscated) i = DECRYPT_INST(i, pc, f->inst_seed);
+  OpCode o=GET_REAL_OPCODE(i, f);
   int a=GETARG_A(i);
   int b=GETARG_B(i);
   int c=GETARG_C(i);
@@ -409,7 +411,7 @@ static void PrintCode(const Proto* f)
    case OP_SETLIST:
     if (c==0) {
         Instruction next_i = code[++pc];
-        if (f->obfuscated) next_i = INDEXED_DECRYPT_INST(next_i, pc);
+        if (f->obfuscated) next_i = DECRYPT_INST(next_i, pc, f->inst_seed);
         printf("\t; %d",(int)next_i);
     } else printf("\t; %d",c);
     break;
@@ -419,8 +421,8 @@ static void PrintCode(const Proto* f)
     printf(" ");
     {
       Instruction next_i = code[pc+1];
-      if (f->obfuscated) next_i = INDEXED_DECRYPT_INST(next_i, pc+1);
-      if (GET_OPCODE(next_i) == OP_EXTRAARG) {
+      if (f->obfuscated) next_i = DECRYPT_INST(next_i, pc+1, f->inst_seed);
+      if (GET_REAL_OPCODE(next_i, f) == OP_EXTRAARG) {
         int b2 = GETARG_Bx(next_i);
         if (ISK(b2)) PrintConstant(f,INDEXK(b2)); else printf("-");
       } else printf("?");

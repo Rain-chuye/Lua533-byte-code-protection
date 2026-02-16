@@ -15,6 +15,7 @@
 #include "lua.h"
 
 #include "lobfuscator.h"
+#include "lopcodes.h"
 #include "lobject.h"
 #include "lstate.h"
 #include "lundump.h"
@@ -108,6 +109,15 @@ static void DumpVCode (const Proto *f, DumpState *D) {
   }
 }
 
+static void DumpOpMap (const Proto *f, DumpState *D) {
+  if (f->op_map) {
+    DumpByte(1, D);
+    DumpVector(f->op_map, NUM_OPCODES, D);
+  } else {
+    DumpByte(0, D);
+  }
+}
+
 static void DumpFunction(const Proto *f, TString *psource, DumpState *D);
 
 static void DumpConstants (const Proto *f, DumpState *D) {
@@ -190,6 +200,8 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
   DumpByte(f->maxstacksize, D);
   DumpByte(f->obfuscated, D);
   DumpInt(f->scratch_base, D);
+  DumpInt(f->inst_seed, D);
+  DumpOpMap(f, D);
   DumpCode(f, D);
   DumpVCode(f, D);
   DumpConstants(f, D);

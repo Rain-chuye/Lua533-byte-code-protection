@@ -18,6 +18,7 @@
 #include "lgc.h"
 #include "lmem.h"
 #include "lobfuscator.h"
+#include "lopcodes.h"
 #include "lobject.h"
 #include "lstate.h"
 #include "ldebug.h"
@@ -159,6 +160,8 @@ Proto *luaF_newproto (lua_State *L) {
   f->maxstacksize = 0;
   f->obfuscated = 0;
   f->scratch_base = 0;
+  f->inst_seed = 0;
+  f->op_map = NULL;
   f->locvars = NULL;
   f->sizelocvars = 0;
   f->linedefined = 0;
@@ -169,6 +172,7 @@ Proto *luaF_newproto (lua_State *L) {
 
 
 void luaF_freeproto (lua_State *L, Proto *f) {
+  luaM_freearray(L, f->op_map, NUM_OPCODES);
   luaM_freearray(L, f->code, f->sizecode);
   luaM_freearray(L, f->vcode, f->sizevcode);
   luaM_freearray(L, f->p, f->sizep);

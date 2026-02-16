@@ -8,9 +8,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 
-
+static int seeded = 0;
 
 void lua_security_check(void) {
     /* Anti-debugging removed to prevent crashes */
@@ -95,20 +96,16 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
 
 void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     if (f->obfuscated) return;
+    if (!seeded) {
+        srand((unsigned int)time(NULL));
+        seeded = 1;
+    }
 
     // Increase stack size to provide slots for dynamic decryption (RK values)
-    // Ensure we don't overwrite any registers used by the function
-    if (f->maxstacksize <= 253) {
-        f->scratch_base = f->maxstacksize;
-        f->maxstacksize += 2;
-    } else {
-        // Not enough space for 2 scratch registers.
-        // If we have 1 slot left, use it for both (unsafe if both RK are constants).
-        // Best approach: Cap at 255 and use the last two slots.
-        // Most functions use way less than 255, so this is just a safety measure.
-        f->scratch_base = 253;
-        f->maxstacksize = 255;
-    }
+    f->scratch_base = f->maxstacksize;
+    f->maxstacksize += 2;
+    if (f->maxstacksize > 255) f->maxstacksize = 255;
+    if (f->scratch_base > 253) f->scratch_base = 253;
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {
@@ -124,12 +121,59 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     virtualize_proto_internal(L, f);
 
-    /* Apply dynamic indexed encryption to all instructions */
+    /* 1. Generate Random Opcode Map */
+    f->op_map = luaM_newvector(L, NUM_OPCODES, lu_byte);
+    lu_byte inv_map[NUM_OPCODES];
+    for (int i = 0; i < NUM_OPCODES; i++) f->op_map[i] = (lu_byte)i;
+    // Shuffle
+    for (int i = NUM_OPCODES - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        lu_byte t = f->op_map[i];
+        f->op_map[i] = f->op_map[j];
+        f->op_map[j] = t;
+    }
+    // Create inverse map for remapping
+    for (int i = 0; i < NUM_OPCODES; i++) {
+        inv_map[f->op_map[i]] = (lu_byte)i;
+    }
+
+    /* 2. Remap Opcodes in Bytecode */
     for (int i = 0; i < f->sizecode; i++) {
-        f->code[i] = INDEXED_ENCRYPT_INST(f->code[i], i);
+        OpCode op = GET_OPCODE(f->code[i]);
+        SET_OPCODE(f->code[i], inv_map[op]);
     }
     for (int i = 0; i < f->sizevcode; i++) {
-        f->vcode[i] = INDEXED_ENCRYPT_INST(f->vcode[i], i);
+        // VCode for OP_VIRTUAL stores raw instructions after the first element (count)
+        // Wait, virtualize_proto_internal stores raw instructions in temp_vcode.
+        // Let's check the structure of vcode.
+        // It starts with 'count', then 'count' instructions.
+    }
+    // Re-check virtualize_proto_internal logic for vcode.
+    int vptr = 0;
+    while (vptr < f->sizevcode) {
+        int count = (int)f->vcode[vptr++];
+        for (int j = 0; j < count; j++) {
+            OpCode op = GET_OPCODE(f->vcode[vptr]);
+            SET_OPCODE(f->vcode[vptr], inv_map[op]);
+            vptr++;
+        }
+    }
+
+    /* 3. Apply Dynamic Encryption with Per-Function Seed */
+    f->inst_seed = (unsigned int)rand();
+    for (int i = 0; i < f->sizecode; i++) {
+        f->code[i] = ENCRYPT_INST(f->code[i], i, f->inst_seed);
+    }
+    vptr = 0;
+    while (vptr < f->sizevcode) {
+        int vcount_idx = vptr;
+        int count = (int)f->vcode[vptr++];
+        // Encrypt the count as well to match VM decryption
+        f->vcode[vcount_idx] = ENCRYPT_INST(f->vcode[vcount_idx], vcount_idx, f->inst_seed);
+        for (int j = 0; j < count; j++) {
+            f->vcode[vptr] = ENCRYPT_INST(f->vcode[vptr], vptr, f->inst_seed);
+            vptr++;
+        }
     }
 
     f->obfuscated = 1;

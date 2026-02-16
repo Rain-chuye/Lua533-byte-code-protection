@@ -8,13 +8,29 @@
 /*
 ** Commercial Obfuscation Keys
 */
-#define LUA_INST_KEY  0xAB8271C3U
-#define LUA_OP_XOR    0x1DU
 #define LUA_CONST_XOR 0x8F
 #define LUA_CUSTOM_SIGNATURE "\x1bLUAX"
 
-#define INDEXED_ENCRYPT_INST(i, idx) ((i) ^ (LUA_INST_KEY + (idx)))
-#define INDEXED_DECRYPT_INST(i, idx) ((i) ^ (LUA_INST_KEY + (idx)))
+#include <stdint.h>
+
+#define ENCRYPT_INST(i, idx, seed) encrypt_instruction(i, idx, seed)
+#define DECRYPT_INST(i, idx, seed) decrypt_instruction(i, idx, seed)
+
+static inline uint32_t encrypt_instruction(uint32_t i, int idx, uint32_t seed) {
+  uint32_t k = seed ^ ((uint32_t)idx * 0x9E3779B9U);
+  i ^= k;
+  i = (i << 13) | (i >> 19);
+  i += k;
+  return i;
+}
+
+static inline uint32_t decrypt_instruction(uint32_t i, int idx, uint32_t seed) {
+  uint32_t k = seed ^ ((uint32_t)idx * 0x9E3779B9U);
+  i -= k;
+  i = (i >> 13) | (i << 19);
+  i ^= k;
+  return i;
+}
 
 /* Numerical Obfuscation */
 #define LUA_INT_XOR       0xDEADBEEFCAFEBABEULL
