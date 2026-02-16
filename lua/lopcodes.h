@@ -87,44 +87,44 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 */
 
 #include "lobfuscator.h"
-#define GET_OPCODE(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, (DECRYPT_INST(i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
-#define SET_OPCODE(i,o)	((i) = ENCRYPT_INST((((DECRYPT_INST(i))&MASK0(SIZE_OP,POS_OP)) | \
-		((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP)&MASK1(SIZE_OP,POS_OP)))))
+#define GET_OPCODE(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
+#define SET_OPCODE(i,o)	((i) = (((i)&MASK0(SIZE_OP,POS_OP)) | \
+		((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
 
 #define getarg(i,pos,size)	(cast(int, ((i)>>pos) & MASK1(size,0)))
-#define setarg(i,v,pos,size)	((i) = ENCRYPT_INST((((DECRYPT_INST(i))&MASK0(size,pos)) | \
-                ((cast(Instruction, v)<<pos)&MASK1(size,pos)))))
+#define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
+                ((cast(Instruction, v)<<pos)&MASK1(size,pos))))
 
-#define GETARG_A(i)	getarg(DECRYPT_INST(i), POS_A, SIZE_A)
+#define GETARG_A(i)	getarg(i, POS_A, SIZE_A)
 #define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
 
-#define GETARG_B(i)	getarg(DECRYPT_INST(i), POS_B, SIZE_B)
+#define GETARG_B(i)	getarg(i, POS_B, SIZE_B)
 #define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
 
-#define GETARG_C(i)	getarg(DECRYPT_INST(i), POS_C, SIZE_C)
+#define GETARG_C(i)	getarg(i, POS_C, SIZE_C)
 #define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
 
-#define GETARG_Bx(i)	getarg(DECRYPT_INST(i), POS_Bx, SIZE_Bx)
+#define GETARG_Bx(i)	getarg(i, POS_Bx, SIZE_Bx)
 #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
 
-#define GETARG_Ax(i)	getarg(DECRYPT_INST(i), POS_Ax, SIZE_Ax)
+#define GETARG_Ax(i)	getarg(i, POS_Ax, SIZE_Ax)
 #define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
 
 #define GETARG_sBx(i)	(GETARG_Bx(i)-MAXARG_sBx)
 #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
 
 
-#define CREATE_ABC(o,a,b,c)	ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+#define CREATE_ABC(o,a,b,c)	((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, b)<<POS_B) \
-			| (cast(Instruction, c)<<POS_C)))
+			| (cast(Instruction, c)<<POS_C))
 
-#define CREATE_ABx(o,a,bc)	ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+#define CREATE_ABx(o,a,bc)	((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
-			| (cast(Instruction, bc)<<POS_Bx)))
+			| (cast(Instruction, bc)<<POS_Bx))
 
-#define CREATE_Ax(o,a)		ENCRYPT_INST(((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
-			| (cast(Instruction, a)<<POS_Ax)))
+#define CREATE_Ax(o,a)		((cast(Instruction, luaP_op_encode[(o) ^ LUA_OP_XOR])<<POS_OP) \
+			| (cast(Instruction, a)<<POS_Ax))
 
 
 /*

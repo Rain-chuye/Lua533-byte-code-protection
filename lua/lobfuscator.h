@@ -13,8 +13,8 @@
 #define LUA_CONST_XOR 0x8F
 #define LUA_CUSTOM_SIGNATURE "\x1bLUAX"
 
-#define ENCRYPT_INST(i) ((i) ^ LUA_INST_KEY)
-#define DECRYPT_INST(i) ((i) ^ LUA_INST_KEY)
+#define INDEXED_ENCRYPT_INST(i, idx) ((i) ^ (LUA_INST_KEY + (idx)))
+#define INDEXED_DECRYPT_INST(i, idx) ((i) ^ (LUA_INST_KEY + (idx)))
 
 /* Numerical Obfuscation */
 #define LUA_INT_XOR       0xDEADBEEFCAFEBABEULL

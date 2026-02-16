@@ -762,7 +762,11 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
     ci->u.l.savedpc += GETARG_sBx(i) + e; }
 
 /* for test instructions, execute the jump instruction that follows it */
-#define donextjump(ci)	{ i = *ci->u.l.savedpc; dojump(ci, i, 1); }
+#define donextjump(ci)	{ \
+    i = *ci->u.l.savedpc; \
+    i = INDEXED_DECRYPT_INST(i, (int)(ci->u.l.savedpc - cl->p->code)); \
+    dojump(ci, i, 1); \
+}
 
 
 #define Protect(x)	{ {x;}; base = ci->u.l.base; ra = RA(i); }
@@ -776,6 +780,7 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 /* fetch an instruction and prepare its execution */
 #define vmfetch()	{ \
   i = *(ci->u.l.savedpc++); \
+  i = INDEXED_DECRYPT_INST(i, (int)(ci->u.l.savedpc - cl->p->code - 1)); \
   if (__builtin_expect(L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT), 0)) \
     Protect(luaG_traceexec(L)); \
   ra = RA(i); /* WARNING: any stack reallocation invalidates 'ra' */ \
@@ -848,6 +853,7 @@ void luaV_execute (lua_State *L) {
   StkId base;
   Instruction *vpc = NULL;
   int vcount = 0;
+  int vpc_idx = 0;
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
   newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
@@ -862,6 +868,7 @@ void luaV_execute (lua_State *L) {
       StkId ra;
       if (__builtin_expect(vpc && vcount > 0, 0)) {
         i = *vpc++;
+        i = INDEXED_DECRYPT_INST(i, vpc_idx++);
         vcount--;
         ra = RA(i);
       } else {
@@ -885,8 +892,11 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_LOADKX) {
         TValue *rb;
-        lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-        rb = k + GETARG_Ax(*ci->u.l.savedpc++);
+        Instruction next_i = *ci->u.l.savedpc;
+        next_i = INDEXED_DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code));
+        lua_assert(GET_OPCODE(next_i) == OP_EXTRAARG);
+        rb = k + GETARG_Ax(next_i);
+        ci->u.l.savedpc++;
         setobj2s(L, ra, rb);
         decrypt_tv(ra);
         vmbreak;
@@ -1376,6 +1386,7 @@ void luaV_execute (lua_State *L) {
         Protect(luaD_call(L, cb, GETARG_C(i)));
         L->top = ci->top;
         i = *(ci->u.l.savedpc++);  /* go to next instruction */
+        i = INDEXED_DECRYPT_INST(i, (int)(ci->u.l.savedpc - cl->p->code - 1));
         ra = RA(i);
         lua_assert(GET_OPCODE(i) == OP_TFORLOOP);
         goto l_tforloop;
@@ -1395,8 +1406,11 @@ void luaV_execute (lua_State *L) {
         Table *h;
         if (n == 0) n = cast_int(L->top - ra) - 1;
         if (c == 0) {
-          lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
-          c = GETARG_Ax(*ci->u.l.savedpc++);
+          Instruction next_i = *ci->u.l.savedpc;
+          next_i = INDEXED_DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code));
+          lua_assert(GET_OPCODE(next_i) == OP_EXTRAARG);
+          c = GETARG_Ax(next_i);
+          ci->u.l.savedpc++;
         }
         h = hvalue(ra);
         last = ((c-1)*LFIELDS_PER_FLUSH) + n;
@@ -1441,6 +1455,7 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_TERNARY) {
         TValue *rb = RB(i);
         Instruction next_i = *ci->u.l.savedpc++;
+        next_i = INDEXED_DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1));
         const TValue *rc_val;
         if (!l_isfalse(rb)) {
           rc_val = RKC(i);
@@ -1461,7 +1476,9 @@ void luaV_execute (lua_State *L) {
           uintptr_t offset = (uintptr_t)vindex * sizeof(Instruction);
           // MBA: (a + b) == (a | b) + (a & b)
           vpc = (Instruction*)((base_ptr | offset) + (base_ptr & offset));
-          vcount = (int)(*vpc++);
+          vpc_idx = vindex;
+          Instruction vcount_raw = *vpc++;
+          vcount = (int)INDEXED_DECRYPT_INST(vcount_raw, vpc_idx++);
           ci->u.l.savedpc += (vcount - 1);
         }
         vmbreak;

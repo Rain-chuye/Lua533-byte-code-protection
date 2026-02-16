@@ -10,7 +10,6 @@
 #include <stdlib.h>
 
 
-#define GET_OPCODE_PLAIN(i)	(cast(OpCode, (luaP_op_decode[cast(lu_byte, ((i)>>POS_OP) & MASK1(SIZE_OP,0))]) ^ LUA_OP_XOR))
 
 
 void lua_security_check(void) {
@@ -124,6 +123,15 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     }
 
     virtualize_proto_internal(L, f);
+
+    /* Apply dynamic indexed encryption to all instructions */
+    for (int i = 0; i < f->sizecode; i++) {
+        f->code[i] = INDEXED_ENCRYPT_INST(f->code[i], i);
+    }
+    for (int i = 0; i < f->sizevcode; i++) {
+        f->vcode[i] = INDEXED_ENCRYPT_INST(f->vcode[i], i);
+    }
+
     f->obfuscated = 1;
 
     f->linedefined = 0;

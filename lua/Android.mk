@@ -7,7 +7,7 @@ LOCAL_MODULE := lua
 CAL_ARM_MODE := arm
 TARGET_PLATFORM := armeabi-v7a
 TARGET_ABI := android-14-armeabi
-LOCAL_CFLAGS += -std=c99 -O3 -flto -DNDEBUG -fno-stack-protector -ffast-math -fomit-frame-pointer -DLUA_USE_JUMP_TABLE -DLUA_DL_DLOPEN -DLUA_COMPAT_5_2
+LOCAL_CFLAGS += -std=c99 -O3 -flto -DNDEBUG -fno-stack-protector -ffast-math -fomit-frame-pointer -fexcess-precision=fast -funroll-loops -DLUA_USE_JUMP_TABLE -DLUA_DL_DLOPEN -DLUA_COMPAT_5_2
 
 
 LOCAL_SRC_FILES := \

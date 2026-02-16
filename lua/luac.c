@@ -321,6 +321,7 @@ static void PrintCode(const Proto* f)
  for (pc=0; pc<n; pc++)
  {
   Instruction i=code[pc];
+  if (f->obfuscated) i = INDEXED_DECRYPT_INST(i, pc);
   OpCode o=GET_OPCODE(i);
   int a=GETARG_A(i);
   int b=GETARG_B(i);
@@ -406,7 +407,11 @@ static void PrintCode(const Proto* f)
     printf("\t; %p",VOID(f->p[bx]));
     break;
    case OP_SETLIST:
-    if (c==0) printf("\t; %d",(int)code[++pc]); else printf("\t; %d",c);
+    if (c==0) {
+        Instruction next_i = code[++pc];
+        if (f->obfuscated) next_i = INDEXED_DECRYPT_INST(next_i, pc);
+        printf("\t; %d",(int)next_i);
+    } else printf("\t; %d",c);
     break;
    case OP_TERNARY:
     printf("\t; ");
@@ -414,6 +419,7 @@ static void PrintCode(const Proto* f)
     printf(" ");
     {
       Instruction next_i = code[pc+1];
+      if (f->obfuscated) next_i = INDEXED_DECRYPT_INST(next_i, pc+1);
       if (GET_OPCODE(next_i) == OP_EXTRAARG) {
         int b2 = GETARG_Bx(next_i);
         if (ISK(b2)) PrintConstant(f,INDEXK(b2)); else printf("-");
