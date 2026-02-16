@@ -1068,6 +1068,21 @@ static void primaryexp (LexState *ls, expdesc *v) {
       singlevar(ls, v);
       return;
     }
+    case TK_CHUYELOAD: {
+      FuncState *fs = ls->fs;
+      /* use a stable internal name for the placeholder in bytecode */
+      TString *alias = luaS_new(ls->L, "\1CHUYELOAD");
+      luaX_next(ls);
+      singlevaraux(fs, alias, v, 1);
+      if (v->k == VVOID) {
+        expdesc key;
+        singlevaraux(fs, ls->envn, v, 1);
+        lua_assert(v->k != VVOID);
+        codestring(ls, &key, alias);
+        luaK_indexed(fs, v, &key);
+      }
+      return;
+    }
     default: {
       luaX_syntaxerror(ls, "未预期的符号");
     }

@@ -201,6 +201,22 @@ static void init_registry (lua_State *L, global_State *g) {
 ** open parts of the state that may cause memory-allocation errors.
 ** ('g->version' != NULL flags that the state was completely build)
 */
+static void luaE_initloadalias (lua_State *L) {
+  global_State *g = G(L);
+  char buf[16];
+  int i;
+  unsigned int seed = g->seed;
+  /* generate a random alias for 'load' */
+  for (i = 0; i < 12; i++) {
+    seed = seed * 1103515245 + 12345;
+    buf[i] = 'a' + (seed % 26);
+  }
+  buf[12] = '\0';
+  g->loadalias = luaS_new(L, buf);
+  luaC_fix(L, obj2gco(g->loadalias));  /* never collect it */
+}
+
+
 static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
   UNUSED(ud);
@@ -209,6 +225,7 @@ static void f_luaopen (lua_State *L, void *ud) {
   luaS_init(L);
   luaT_init(L);
   luaX_init(L);
+  luaE_initloadalias(L);
   g->gcrunning = 1;  /* allow gc */
   g->version = lua_version(NULL);
   luai_userstateopen(L);
@@ -315,6 +332,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->strt.size = g->strt.nuse = 0;
   g->strt.hash = NULL;
   setnilvalue(&g->l_registry);
+  g->loadalias = NULL;
   g->panic = NULL;
   g->version = NULL;
   g->gcstate = GCSpause;

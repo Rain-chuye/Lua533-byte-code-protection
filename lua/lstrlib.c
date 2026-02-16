@@ -1678,22 +1678,16 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
     char *script = (char *)malloc(out_capacity);
     size_t opi = 0;
 
-    char varname[15];
-    static unsigned int counter = 0;
-    srand((unsigned int)time(NULL) + (unsigned int)(uintptr_t)input + (counter++));
-    sprintf(varname, "l_%04x%04x", (unsigned int)rand() & 0xFFFF, (unsigned int)rand() & 0xFFFF);
-
     opi += sprintf(script + opi, "-- \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
-    opi += sprintf(script + opi, "local %s = load\n", varname);
 
     for (int i = 1; i <= total; i++) {
         size_t offset = (i - 1) * chunk_size;
         size_t this_size = (i == total) ? (len - offset) : chunk_size;
         char *encoded = luaL_encrypt_chuye(input + offset, this_size, whole_crc, total, i);
         if (i == total)
-            opi += sprintf(script + opi, "return %s(\"%s\")()\n", varname, encoded);
+            opi += sprintf(script + opi, "return __CHUYELOAD__(\"%s\")()\n", encoded);
         else
-            opi += sprintf(script + opi, "%s(\"%s\")\n", varname, encoded);
+            opi += sprintf(script + opi, "__CHUYELOAD__(\"%s\")\n", encoded);
         free(encoded);
     }
 

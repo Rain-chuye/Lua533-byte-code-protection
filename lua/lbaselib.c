@@ -19,6 +19,7 @@
 
 #include "lauxlib.h"
 #include "lualib.h"
+#include "lstate.h"
 #include "lobfuscator.h"
 
 
@@ -398,7 +399,7 @@ static const char *generic_reader (lua_State *L, void *ud, size_t *size) {
 
 static int noop (lua_State *L) { return 0; }
 
-static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int envidx) {
+static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int envidx, const char *mode) {
     unsigned int whole_crc = (decoded[4] << 24) | (decoded[5] << 16) | (decoded[6] << 8) | decoded[7];
     int total = (decoded[8] << 8) | decoded[9];
     int index = (decoded[10] << 8) | decoded[11];
@@ -450,11 +451,10 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
             size_t final_len;
             const char *payload = lua_tolstring(L, 7, &final_len);
 
-            char *decrypted = (char *)malloc(final_len);
+            char *decrypted = (char *)lua_newuserdata(L, final_len); // Index 8
             for (size_t i = 0; i < final_len; i++) decrypted[i] = payload[i] ^ 0x77;
 
-            status = luaL_loadbufferx(L, decrypted, final_len, "=(chuye)", "b");
-            free(decrypted);
+            status = luaL_loadbufferx(L, decrypted, final_len, "=(chuye)", mode);
 
             lua_pushnil(L);
             lua_rawseti(L, 5, (lua_Integer)whole_crc);
@@ -483,7 +483,7 @@ static int luaB_load (lua_State *L) {
     size_t dlen;
     unsigned char *decoded = luaL_decrypt_chuye(s, l, &dlen);
     if (decoded && dlen >= 12 && memcmp(decoded, "CHYE", 4) == 0) {
-      return chunk_handler(L, decoded, dlen, env);
+      return chunk_handler(L, decoded, dlen, env, mode);
     }
     if (decoded) free(decoded);
 
@@ -671,5 +671,17 @@ LUAMOD_API int luaopen_base (lua_State *L) {
   /* set global _VERSION */
   lua_pushliteral(L, LUA_VERSION);
   lua_setfield(L, -2, "_VERSION");
+  /* register load alias if it exists */
+  if (G(L)->loadalias) {
+    lua_getfield(L, -1, "load");
+    lua_pushstring(L, getstr(G(L)->loadalias));
+    lua_pushvalue(L, -2); /* copy 'load' function */
+    lua_settable(L, -4);
+
+    /* also register the stable internal name for __CHUYELOAD__ placeholder */
+    lua_pushstring(L, "\1CHUYELOAD");
+    lua_insert(L, -2);
+    lua_settable(L, -3);
+  }
   return 1;
 }
