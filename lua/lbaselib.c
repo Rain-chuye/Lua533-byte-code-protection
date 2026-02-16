@@ -678,8 +678,8 @@ LUAMOD_API int luaopen_base (lua_State *L) {
     lua_pushvalue(L, -2); /* copy 'load' function */
     lua_settable(L, -4);
 
-    /* also register the stable internal name for __CHUYELOAD__ placeholder */
-    lua_pushstring(L, "\1CHUYELOAD");
+    /* also register the stable internal name for LuaVMP placeholder */
+    lua_pushstring(L, "\1LuaVMP");
     lua_insert(L, -2);
     lua_settable(L, -3);
   }

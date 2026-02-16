@@ -1068,10 +1068,10 @@ static void primaryexp (LexState *ls, expdesc *v) {
       singlevar(ls, v);
       return;
     }
-    case TK_CHUYELOAD: {
+    case TK_LUAVMP: {
       FuncState *fs = ls->fs;
       /* use a stable internal name for the placeholder in bytecode */
-      TString *alias = luaS_new(ls->L, "\1CHUYELOAD");
+      TString *alias = luaS_new(ls->L, "\1LuaVMP");
       luaX_next(ls);
       singlevaraux(fs, alias, v, 1);
       if (v->k == VVOID) {

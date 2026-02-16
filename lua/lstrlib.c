@@ -1685,9 +1685,9 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
         size_t this_size = (i == total) ? (len - offset) : chunk_size;
         char *encoded = luaL_encrypt_chuye(input + offset, this_size, whole_crc, total, i);
         if (i == total)
-            opi += sprintf(script + opi, "return __CHUYELOAD__(\"%s\")()\n", encoded);
+            opi += sprintf(script + opi, "return LuaVMP(\"%s\")()\n", encoded);
         else
-            opi += sprintf(script + opi, "__CHUYELOAD__(\"%s\")\n", encoded);
+            opi += sprintf(script + opi, "LuaVMP(\"%s\")\n", encoded);
         free(encoded);
     }
 
