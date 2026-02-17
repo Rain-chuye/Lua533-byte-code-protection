@@ -644,7 +644,7 @@ static int g_read (lua_State *L, FILE *f, int first) {
             success = 1; /* always success */
             break;
           default:
-            return luaL_argerror(L, n, "invalid format");
+            return luaL_argerror(L, n, "无效的格式");
         }
       }
     }

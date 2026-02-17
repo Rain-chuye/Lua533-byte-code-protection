@@ -77,6 +77,9 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "FUSE_NOP",
   "FUSE_PARTICLE_DIST",
   "FUSE_ADD_TO_FIELD",
+  "SUPER_MOVE_LOADK",
+  "SUPER_MOVE_MOVE",
+  "SUPER_GETTABLE_CALL",
   NULL
 };
 

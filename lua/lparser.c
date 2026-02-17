@@ -2054,7 +2054,7 @@ static void exprstat (LexState *ls) {
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */
-    check_condition(ls, v.v.k == VCALL, "syntax error");
+    check_condition(ls, v.v.k == VCALL, "语法错误");
     SETARG_C(getinstruction(fs, &v.v), 1);  /* call statement uses no results */
   }
 }

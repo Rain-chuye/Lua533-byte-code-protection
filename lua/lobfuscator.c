@@ -205,13 +205,31 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
         while (i < old_sizecode) {
             Instruction inst = f->code[i];
             OpCode op = GET_OPCODE(inst);
+
+            if (i > start && is_target[i]) break; // Start of a jump target
+
+            /* Test opcodes and their following JMP must stay real and atomic in f->code */
+            if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET) {
+                break;
+            }
+
+            i++; count++;
+
+            /* Keep fused sequences atomic */
+            if (op == OP_FUSE_GETSUB || op == OP_FUSE_GETADD || op == OP_TERNARY || op == OP_LOADKX || op == OP_SUPER_GETTABLE_CALL) {
+                if (i < old_sizecode) { i++; count++; }
+            } else if (op == OP_FUSE_PARTICLE_DIST) {
+                if (i < old_sizecode) { i++; count++; }
+                if (i < old_sizecode) { i++; count++; }
+            } else if (op == OP_FUSE_GETGETSUB) {
+                if (i < old_sizecode) { i++; count++; }
+            }
+
             // Blocks now include any instruction except those that change control flow in complex ways
             int is_terminal = (op == OP_JMP || op == OP_FORLOOP || op == OP_FORPREP || op == OP_TFORLOOP ||
                                op == OP_RETURN || op == OP_CALL || op == OP_TAILCALL || op == OP_TFORCALL ||
                                op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET);
 
-            if (i > start && is_target[i]) break; // Start of a jump target
-            i++; count++;
             if (is_terminal) break; // Terminate block after control flow instruction
             if (count >= 250) break;
         }
@@ -227,61 +245,22 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
                 f->code[start + j] = CREATE_Ax(OP_EXTRAARG, 0x3FFFFFF & (unsigned int)rand()); // Opaque noise
             }
         } else {
-            i = start + 1;
+            /* If we didn't virtualize, move past the current instruction (and its partner if it's a test) */
+            Instruction inst = f->code[start];
+            OpCode op = GET_OPCODE(inst);
+            if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET) {
+                i = start + 2; // Skip both
+            } else {
+                i = start + 1;
+            }
         }
     }
 
     if (vcode_ptr > 0) {
-        /* Shuffle Basic Blocks for Control Flow Flattening */
-        int num_blocks = 0;
-        int p = 0;
-        while (p < vcode_ptr) { num_blocks++; p += (1 + (int)temp_vcode[p]); }
-
-        int *block_offsets = luaM_newvector(L, num_blocks, int);
-        int *shuffled_indices = luaM_newvector(L, num_blocks, int);
-        p = 0;
-        for (int i = 0; i < num_blocks; i++) {
-            block_offsets[i] = p;
-            shuffled_indices[i] = i;
-            p += (1 + (int)temp_vcode[p]);
-        }
-        // Shuffle
-        for (int i = num_blocks - 1; i > 0; i--) {
-            int j = rand() % (i + 1);
-            int t = shuffled_indices[i]; shuffled_indices[i] = shuffled_indices[j]; shuffled_indices[j] = t;
-        }
-
-        Instruction *shuffled_vcode = luaM_newvector(L, vcode_ptr, Instruction);
-        int *new_offsets = luaM_newvector(L, num_blocks, int);
-        int sp = 0;
-        for (int i = 0; i < num_blocks; i++) {
-            int old_idx = shuffled_indices[i];
-            int old_off = block_offsets[old_idx];
-            int len = 1 + (int)temp_vcode[old_off];
-            new_offsets[old_idx] = sp;
-            memcpy(shuffled_vcode + sp, temp_vcode + old_off, len * sizeof(Instruction));
-            sp += len;
-        }
-
-        // Update OP_VIRTUAL indices in main code
-        for (int i = 0; i < old_sizecode; i++) {
-            if (GET_OPCODE(f->code[i]) == OP_VIRTUAL) {
-                int old_vidx = GETARG_Ax(f->code[i]);
-                // Find which block this offset belongs to
-                for (int b = 0; b < num_blocks; b++) {
-                    if (block_offsets[b] == old_vidx) {
-                        SETARG_Ax(f->code[i], new_offsets[b]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        f->vcode = shuffled_vcode;
+        /* Shuffle Disabled for debugging */
+        f->vcode = luaM_newvector(L, vcode_ptr, Instruction);
+        memcpy(f->vcode, temp_vcode, vcode_ptr * sizeof(Instruction));
         f->sizevcode = vcode_ptr;
-        luaM_freearray(L, block_offsets, num_blocks);
-        luaM_freearray(L, shuffled_indices, num_blocks);
-        luaM_freearray(L, new_offsets, num_blocks);
     }
     luaM_freearray(L, temp_vcode, old_sizecode * 3);
     luaM_freearray(L, is_target, old_sizecode);
@@ -371,9 +350,11 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     vptr = 0;
     while (vptr < f->sizevcode) {
         int vcount_idx = vptr;
-        int count = (int)f->vcode[vptr++];
+        Instruction raw_count = f->vcode[vptr];
+        int count = (int)raw_count;
+        vptr++;
         // Encrypt the count as well to match VM decryption
-        f->vcode[vcount_idx] = ENCRYPT_INST(f->vcode[vcount_idx], vcount_idx, f->inst_seed);
+        f->vcode[vcount_idx] = ENCRYPT_INST(raw_count, vcount_idx, f->inst_seed);
         for (int j = 0; j < count; j++) {
             f->vcode[vptr] = ENCRYPT_INST(f->vcode[vptr], vptr, f->inst_seed);
             vptr++;
@@ -384,11 +365,13 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     f->linedefined = 0;
     f->lastlinedefined = 0;
-    f->source = NULL;
+    f->source = luaS_new(L, "=(初叶定制)");
 
     // Strip debug info explicitly
     if (f->lineinfo) { luaM_freearray(L, f->lineinfo, f->sizelineinfo); f->lineinfo = NULL; f->sizelineinfo = 0; }
     if (f->locvars) {
+        luaM_freearray(L, f->locvars, f->sizelocvars);
+        f->locvars = NULL;
         f->sizelocvars = 0;
     }
     if (f->upvalues) {

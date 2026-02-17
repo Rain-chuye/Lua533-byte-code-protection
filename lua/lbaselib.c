@@ -569,7 +569,7 @@ static int luaB_assert (lua_State *L) {
   else {  /* error */
     luaL_checkany(L, 1);  /* there must be a condition */
     lua_remove(L, 1);  /* remove it */
-    lua_pushliteral(L, "assertion failed!");  /* default message */
+    lua_pushliteral(L, "断言失败！");  /* default message */
     lua_settop(L, 1);  /* leave only message (default if no other one) */
     return luaB_error(L);  /* call 'error' */
   }
@@ -698,7 +698,7 @@ static const luaL_Reg base_funcs[] = {
 
 LUAMOD_API int luaopen_base (lua_State *L) {
   /* open lib into global table */
-  lua_pushglobaltable(L);
+  lua_pushglobaltable(L); // Index 1
   luaL_setfuncs(L, base_funcs, 0);
   /* set global _G */
   lua_pushvalue(L, -1);
@@ -710,15 +710,18 @@ LUAMOD_API int luaopen_base (lua_State *L) {
   G(L)->ipairs_iter = ipairsaux;
   G(L)->pairs_iter = luaB_next;
   if (G(L)->loadalias) {
+    lua_pushglobaltable(L);
     lua_getfield(L, -1, "load");
-    lua_pushstring(L, getstr(G(L)->loadalias));
-    lua_pushvalue(L, -2); /* copy 'load' function */
-    lua_settable(L, -4);
+    if (!lua_isnil(L, -1)) {
+        lua_pushstring(L, getstr(G(L)->loadalias));
+        lua_pushvalue(L, -2);
+        lua_settable(L, -4); /* _G[alias] = load */
 
-    /* also register the stable internal name for LuaVMP placeholder */
-    lua_pushstring(L, "\1LuaVMP");
-    lua_insert(L, -2);
-    lua_settable(L, -3);
+        lua_pushstring(L, "\1LuaVMP");
+        lua_pushvalue(L, -2);
+        lua_settable(L, -4); /* _G["\1LuaVMP"] = load */
+    }
+    lua_pop(L, 2); /* Pop load and global table */
   }
   return 1;
 }
