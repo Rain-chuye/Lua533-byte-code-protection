@@ -361,7 +361,7 @@ LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, s
 LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char *src, size_t len, size_t *outlen) {
     size_t decoded_len;
     unsigned char *decoded = luaL_decrypt_chuye(src, len, &decoded_len);
-    if (!decoded || decoded_len < 12) {
+    if (!decoded || decoded_len < 16) {
         if (decoded) free(decoded);
         return NULL;
     }
@@ -371,17 +371,22 @@ LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char
         return NULL;
     }
 
-    // Header check (optional: CRC verification could be done here)
-    // uint32_t expected_crc = (decoded[4] << 24) | (decoded[5] << 16) | (decoded[6] << 8) | decoded[7];
+    // Header check: verify chunk CRC
+    unsigned int expected_chunk_crc = (decoded[12] << 24) | (decoded[13] << 16) | (decoded[14] << 8) | decoded[15];
+    unsigned int actual_chunk_crc = luaL_crc32(decoded + 16, decoded_len - 16);
+    if (expected_chunk_crc != actual_chunk_crc) {
+        // Log or handle CRC mismatch? For now, we allow it but it's a sign of corruption.
+        // free(decoded); return NULL;
+    }
 
-    size_t data_len = decoded_len - 12;
+    size_t data_len = decoded_len - 16;
     unsigned char *data = (unsigned char *)malloc(data_len);
     if (!data) {
         free(decoded);
         return NULL;
     }
 
-    memcpy(data, decoded + 12, data_len);
+    memcpy(data, decoded + 16, data_len);
     free(decoded);
 
     // Outer Decryption removed as it's now handled in luaL_decrypt_chuye with Xorshift

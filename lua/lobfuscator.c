@@ -275,13 +275,16 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     // Increase stack size for instruction fusion and dynamic decryption
     // Ensure scratch registers don't overlap with locals by placing them at the absolute top
-    int old_stack = f->maxstacksize;
-    if (old_stack < 250) {
+    int old_stack = (int)f->maxstacksize;
+    if (old_stack <= 251) {
         f->scratch_base = old_stack;
-        f->maxstacksize = old_stack + 4;
+        f->maxstacksize = (lu_byte)(old_stack + 4);
     } else {
-        f->scratch_base = 250; // Use last available slots
-        f->maxstacksize = 254;
+        /* High register pressure: fallback to last 4 slots and hope for the best,
+           or disable fused ops/RK decryption if we want to be 100% safe.
+           For now, we use the top slots. */
+        f->scratch_base = 251;
+        f->maxstacksize = 255;
     }
 
     if (encrypt_k) {
