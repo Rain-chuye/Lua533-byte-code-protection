@@ -1632,7 +1632,7 @@ static void shuffle_alphabet(char *alphabet, unsigned int seed) {
 }
 
 LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsigned int whole_crc, int total, int index) {
-    size_t data_len = len + 12;
+    size_t data_len = len + 16;
     unsigned char *data = (unsigned char *)malloc(data_len);
     data[0] = 'C'; data[1] = 'H'; data[2] = 'Y'; data[3] = 'E';
     data[4] = (whole_crc >> 24) & 0xFF;
@@ -1643,7 +1643,14 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
     data[9] = total & 0xFF;
     data[10] = (index >> 8) & 0xFF;
     data[11] = index & 0xFF;
-    memcpy(data + 12, input, len);
+
+    unsigned int chunk_crc = luaL_crc32(input, len);
+    data[12] = (chunk_crc >> 24) & 0xFF;
+    data[13] = (chunk_crc >> 16) & 0xFF;
+    data[14] = (chunk_crc >> 8) & 0xFF;
+    data[15] = chunk_crc & 0xFF;
+
+    memcpy(data + 16, input, len);
 
     static unsigned int global_seed = 0;
     if (global_seed == 0) global_seed = (unsigned int)time(NULL);

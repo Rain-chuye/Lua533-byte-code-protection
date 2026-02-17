@@ -112,6 +112,7 @@ CallInfo *luaE_extendCI (lua_State *L) {
   L->ci->next = ci;
   ci->previous = L->ci;
   ci->next = NULL;
+  ci->u.l.vpc = NULL; ci->u.l.vcount = 0; ci->u.l.vpc_idx = 0; ci->u.l.v_just = 0;
   L->nci++;
   return ci;
 }
@@ -165,6 +166,7 @@ static void stack_init (lua_State *L1, lua_State *L) {
   ci->func = L1->top;
   setnilvalue(L1->top++);  /* 'function' entry for this 'ci' */
   ci->top = L1->top + LUA_MINSTACK;
+  ci->u.l.vpc = NULL; ci->u.l.vcount = 0; ci->u.l.vpc_idx = 0; ci->u.l.v_just = 0;
   L1->ci = ci;
 }
 

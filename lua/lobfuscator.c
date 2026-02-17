@@ -274,10 +274,15 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     }
 
     // Increase stack size for instruction fusion and dynamic decryption
-    f->scratch_base = f->maxstacksize;
-    f->maxstacksize += 4;
-    if (f->maxstacksize > 255) f->maxstacksize = 255;
-    if (f->scratch_base > 251) f->scratch_base = 251;
+    // Ensure scratch registers don't overlap with locals by placing them at the absolute top
+    int old_stack = f->maxstacksize;
+    if (old_stack < 250) {
+        f->scratch_base = old_stack;
+        f->maxstacksize = old_stack + 4;
+    } else {
+        f->scratch_base = 250; // Use last available slots
+        f->maxstacksize = 254;
+    }
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {

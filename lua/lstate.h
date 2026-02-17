@@ -79,6 +79,10 @@ typedef struct CallInfo {
     struct {  /* only for Lua functions */
       StkId base;  /* base for this function */
       const Instruction *savedpc;
+      const Instruction *vpc;
+      int vcount;
+      int vpc_idx;
+      int v_just;
     } l;
     struct {  /* only for C functions */
       lua_KFunction k;  /* continuation in case of yields */

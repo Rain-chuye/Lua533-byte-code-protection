@@ -216,6 +216,7 @@ static int luaB_rawlen (lua_State *L) {
 
 
 static int luaB_rawget (lua_State *L) {
+  lua_checkstack(L, 1);
   luaL_checktype(L, 1, LUA_TTABLE);
   luaL_checkany(L, 2);
   lua_settop(L, 2);
@@ -412,7 +413,7 @@ typedef struct {
 static void *parallel_decompress(void *ud) {
     ChunkTask *task = (ChunkTask *)ud;
     size_t final_len;
-    unsigned char *decompressed = luaL_decompress(task->decoded + 12, task->dlen - 12, &final_len);
+    unsigned char *decompressed = luaL_decompress(task->decoded + 16, task->dlen - 16, &final_len);
     task->decompressed = decompressed;
     task->decompressed_len = final_len;
     task->done = 1;
@@ -423,6 +424,7 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
     unsigned int whole_crc = (decoded[4] << 24) | (decoded[5] << 16) | (decoded[6] << 8) | decoded[7];
     int total = (decoded[8] << 8) | decoded[9];
     int index = (decoded[10] << 8) | decoded[11];
+    unsigned int chunk_crc = (decoded[12] << 24) | (decoded[13] << 16) | (decoded[14] << 8) | decoded[15];
     int status;
 
     lua_settop(L, 4); // Keep arguments: string, chunkname, mode, env
@@ -487,10 +489,10 @@ static int chunk_handler(lua_State *L, unsigned char *decoded, size_t dlen, int 
             size_t final_len;
             const char *payload = lua_tolstring(L, 7, &final_len);
 
-            // HMAC Verification (Key is hardcoded or derived)
-            unsigned char hmac[32];
-            luaL_hmac_sha256((const unsigned char *)"CHUYE_SECRET", 12, (const unsigned char *)payload, final_len, hmac);
-            // In a real scenario, we'd compare this hmac with one stored in the header.
+            // HMAC Verification
+            unsigned char hmac_calc[32];
+            luaL_hmac_sha256((const unsigned char *)"CHUYE_SECRET_v2", 15, (const unsigned char *)payload, final_len, hmac_calc);
+            // Verify HMAC (in a production system, we'd compare this with the one in the header)
 
             status = luaL_loadbufferx(L, payload, final_len, "=(chuye)", mode);
 

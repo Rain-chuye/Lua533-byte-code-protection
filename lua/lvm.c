@@ -762,17 +762,17 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 	ISK(GETARG_C(i)) ? get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1) : base+GETARG_C(i))
 
 #define FETCH_NEXT_INST(next_i) \
-    if (vpc && vcount > 0) { \
+    if (ci->u.l.vpc && ci->u.l.vcount > 0) { \
         ci->u.l.savedpc++; \
-        Instruction raw_next = *vpc++; \
-        raw_next = DECRYPT_INST(raw_next, vpc_idx++, cl->p->inst_seed); \
+        Instruction raw_next = *ci->u.l.vpc++; \
+        raw_next = DECRYPT_INST(raw_next, ci->u.l.vpc_idx++, cl->p->inst_seed); \
         Instruction vi = ~raw_next; \
         OpCode v_op = GET_REAL_OPCODE_VAL((vi & 0x3F), cl->p); \
         int v_b = (vi >> 6) & 0x1FF; \
         int v_a = (vi >> 15) & 0xFF; \
         int v_c = (vi >> 23) & 0x1FF; \
         next_i = (v_op) | (v_a << 6) | (v_b << 23) | (v_c << 14); \
-        vcount--; \
+        ci->u.l.vcount--; \
     } else { \
         next_i = *ci->u.l.savedpc++; \
         next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed); \
@@ -784,7 +784,7 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
   { int a = GETARG_A(i); \
     if (a != 0) luaF_close(L, ci->u.l.base + a - 1); \
     ci->u.l.savedpc += GETARG_sBx(i) + e; \
-    vpc = NULL; vcount = 0; \
+    ci->u.l.vpc = NULL; ci->u.l.vcount = 0; \
   }
 
 /* for test instructions, execute the jump instruction that follows it */
@@ -882,28 +882,22 @@ void luaV_execute (lua_State *L) {
   LClosure *cl;
   TValue *k;
   StkId base;
-  Instruction *vpc = NULL;
-  int vcount = 0;
-  int vpc_idx = 0;
-  int v_just = 0;
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
   newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
   cl = clLvalue(ci->func);  /* local reference to function's closure */
   k = cl->p->k;  /* local reference to function's constant table */
   base = ci->u.l.base;  /* local copy of function's base */
-  vpc = NULL; vcount = 0; v_just = 0;
   /* main loop of interpreter */
   for (;;) {
     L_next_ins: {
       Instruction i;
       StkId ra;
-      // fprintf(stderr, "PC: %d, VPC: %p, VCOUNT: %d\n", (int)(ci->u.l.savedpc - cl->p->code), vpc, vcount);
-      if (__builtin_expect(vpc && vcount > 0, 0)) {
-        if (!v_just) ci->u.l.savedpc++;
-        v_just = 0;
-        Instruction raw_i = *vpc++;
-        raw_i = DECRYPT_INST(raw_i, vpc_idx++, cl->p->inst_seed);
+      if (__builtin_expect(ci->u.l.vpc && ci->u.l.vcount > 0, 0)) {
+        if (!ci->u.l.v_just) ci->u.l.savedpc++;
+        ci->u.l.v_just = 0;
+        Instruction raw_i = *ci->u.l.vpc++;
+        raw_i = DECRYPT_INST(raw_i, ci->u.l.vpc_idx++, cl->p->inst_seed);
         /* Decode Custom ISA: OP[0..5] | B[6..14] | A[15..22] | C[23..31] and bitwise NOT */
         Instruction vi = ~raw_i;
         OpCode v_op = GET_REAL_OPCODE_VAL((vi & 0x3F), cl->p);
@@ -913,10 +907,10 @@ void luaV_execute (lua_State *L) {
 
         /* High-speed Reconstruct standard instruction bits */
         i = (v_op) | (v_a << 6) | (v_b << 23) | (v_c << 14);
-        vcount--;
+        ci->u.l.vcount--;
         ra = RA(i);
       } else {
-        vpc = NULL;
+        ci->u.l.vpc = NULL;
         vmfetch();
       }
 #if defined(LUA_USE_JUMP_TABLE)
@@ -946,7 +940,7 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_LOADBOOL) {
         setbvalue(ra, GETARG_B(i));
-        if (GETARG_C(i)) { ci->u.l.savedpc++; vpc = NULL; vcount = 0; }  /* skip next instruction (if C) */
+        if (GETARG_C(i)) { ci->u.l.savedpc++; ci->u.l.vpc = NULL; ci->u.l.vcount = 0; }  /* skip next instruction (if C) */
         vmbreak;
       }
       vmcase(OP_LOADNIL) {
@@ -1521,7 +1515,7 @@ void luaV_execute (lua_State *L) {
           lua_Integer limit = ivalue(ra + 1);
           if ((0 < step) ? (idx <= limit) : (limit <= idx)) {
             ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
-            vpc = NULL; vcount = 0;
+            ci->u.l.vpc = NULL; ci->u.l.vcount = 0;
             chgivalue(ra, idx);  /* update internal index... */
             setivalue(ra + 3, idx);  /* ...and external index */
           }
@@ -1533,7 +1527,7 @@ void luaV_execute (lua_State *L) {
           if (luai_numlt(0, step) ? luai_numle(idx, limit)
                                   : luai_numle(limit, idx)) {
             ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
-            vpc = NULL; vcount = 0;
+            ci->u.l.vpc = NULL; ci->u.l.vcount = 0;
             chgfltvalue(ra, idx);  /* update internal index... */
             setfltvalue(ra + 3, idx);  /* ...and external index */
           }
@@ -1566,7 +1560,7 @@ void luaV_execute (lua_State *L) {
           setfltvalue(init, luai_numsub(L, ninit, nstep));
         }
         ci->u.l.savedpc += GETARG_sBx(i);
-        vpc = NULL; vcount = 0;
+        ci->u.l.vpc = NULL; ci->u.l.vcount = 0;
         vmbreak;
       }
         vmcase(OP_TFOREACH) {
@@ -1623,7 +1617,7 @@ void luaV_execute (lua_State *L) {
         if (!ttisnil(ra + 1)) {  /* continue loop? */
            setobjs2s(L, ra, ra + 1);  /* save control variable */
            ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
-           vpc = NULL; vcount = 0;
+           ci->u.l.vpc = NULL; ci->u.l.vcount = 0;
         }
         vmbreak;
       }
@@ -1697,11 +1691,11 @@ void luaV_execute (lua_State *L) {
         int vindex = GETARG_Ax(i);
         if (cl->p->vcode && vindex >= 0 && vindex < cl->p->sizevcode) {
           Instruction *block_start = cl->p->vcode + vindex;
-          vpc = block_start;
-          vpc_idx = vindex;
-          Instruction vcount_raw = *vpc++;
-          vcount = (int)DECRYPT_INST(vcount_raw, vpc_idx++, cl->p->inst_seed);
-          v_just = 1;
+          ci->u.l.vpc = block_start;
+          ci->u.l.vpc_idx = vindex;
+          Instruction vcount_raw = *ci->u.l.vpc++;
+          ci->u.l.vcount = (int)DECRYPT_INST(vcount_raw, ci->u.l.vpc_idx++, cl->p->inst_seed);
+          ci->u.l.v_just = 1;
         }
         vmbreak;
       }

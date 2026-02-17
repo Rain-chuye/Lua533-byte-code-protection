@@ -374,8 +374,8 @@ static int Lutf8_codepoint(lua_State *L) {
   lua_Integer pose = byterelat(luaL_optinteger(L, 3, posi), len);
   int n;
   const char *se;
-  luaL_argcheck(L, posi >= 1, 2, "out of range");
-  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of range");
+  luaL_argcheck(L, posi >= 1, 2, "超出范围");
+  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "超出范围");
   if (posi > pose) return 0;  /* empty interval; return no values */
   n = (int)(pose -  posi + 1);
   if (posi + n <= pose)  /* (lua_Integer -> int) overflow? */
@@ -789,8 +789,8 @@ static const char *matchbalance (MatchState *ms, const char *s,
   unsigned ch, begin, end;
   *p += utf8_decode(*p, ms->p_end, &begin);
   if (*p >= ms->p_end)
-    luaL_error(ms->L, "malformed pattern "
-                      "(missing arguments to " LUA_QL("%%b") ")");
+    luaL_error(ms->L, "模式格式错误 "
+                      "(缺少 '%%b' 的参数)");
   *p += utf8_decode(*p, ms->p_end, &end);
   s += utf8_decode(s, ms->src_end, &ch);
   if (ch != begin) return NULL;
@@ -907,8 +907,7 @@ static const char *match (MatchState *ms, const char *s, const char *p) {
           case 'f': {  /* frontier? */
             const char *ep; unsigned previous = 0, current = 0;
             if (*p != '[')
-              luaL_error(ms->L, "missing " LUA_QL("[") " after "
-                                 LUA_QL("%%f") " in pattern");
+              luaL_error(ms->L, "模式中 '%%f' 后缺少 '['");
             ep = classend(ms, p);  /* points to what is next */
             if (s != ms->src_init)
               utf8_decode(utf8_prev(ms->src_init, s), ms->src_end, &previous);
@@ -1172,8 +1171,7 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
       news += utf8_decode(news, new_end, &ch); /* skip ESC */
       if (!utf8_isdigit(ch)) {
         if (ch != L_ESC)
-          luaL_error(ms->L, "无效地使用了 " LUA_QL("%c")
-              " in replacement string", L_ESC);
+          luaL_error(ms->L, "在替换字符串中无效地使用了 '%c'", L_ESC);
         add_utf8char(b, ch);
       }
       else if (ch == '0')
@@ -1227,7 +1225,7 @@ static int Lutf8_gsub(lua_State *L) {
   luaL_Buffer b;
   luaL_argcheck(L, tr == LUA_TNUMBER || tr == LUA_TSTRING ||
                    tr == LUA_TFUNCTION || tr == LUA_TTABLE, 3,
-                      "string/function/table expected");
+                      "期望为 string/function/table");
   luaL_buffinit(L, &b);
   if (anchor) p++;  /* skip anchor character */
   ms.L = L;

@@ -34,7 +34,7 @@ static const int HOOKKEY = 0;
 */
 static void checkstack (lua_State *L, lua_State *L1, int n) {
   if (L != L1 && !lua_checkstack(L1, n))
-    luaL_error(L, "stack overflow");
+    luaL_error(L, "栈溢出");
 }
 
 
@@ -160,7 +160,7 @@ static int db_getinfo (lua_State *L) {
     }
   }
   if (!lua_getinfo(L1, options, &ar))
-    return luaL_argerror(L, arg+2, "invalid option");
+    return luaL_argerror(L, arg+2, "无效的选项");
   lua_newtable(L);  /* table to collect results */
   if (strchr(options, 'S')) {
     settabss(L, "source", ar.source);
@@ -204,7 +204,7 @@ static int db_getlocal (lua_State *L) {
   else {  /* stack-level argument */
     int level = (int)luaL_checkinteger(L, arg + 1);
     if (!lua_getstack(L1, level, &ar))  /* out of range? */
-      return luaL_argerror(L, arg+1, "level out of range");
+      return luaL_argerror(L, arg+1, "层级超出范围");
     checkstack(L, L1, 1);
     name = lua_getlocal(L1, &ar, nvar);
     if (name) {
@@ -229,7 +229,7 @@ static int db_setlocal (lua_State *L) {
   int level = (int)luaL_checkinteger(L, arg + 1);
   int nvar = (int)luaL_checkinteger(L, arg + 2);
   if (!lua_getstack(L1, level, &ar))  /* out of range? */
-    return luaL_argerror(L, arg+1, "level out of range");
+    return luaL_argerror(L, arg+1, "层级超出范围");
   luaL_checkany(L, arg+3);
   lua_settop(L, arg+3);
   checkstack(L, L1, 1);
@@ -248,7 +248,7 @@ static int db_getfenv (lua_State *L) {
   /* stack-level argument */
     int level = (int)luaL_checkinteger(L, 1);
     if (!lua_getstack(L, level, &ar))  /* out of range? */
-      return luaL_argerror(L, 1, "level out of range");
+      return luaL_argerror(L, 1, "层级超出范围");
     lua_getinfo(L, "u", &ar);
     name = lua_getlocal(L, &ar, nvar + ar.nparams);
     if (name)
@@ -263,7 +263,7 @@ static int db_setfenv (lua_State *L) {
     int level = (int)luaL_checkinteger(L, 1);
     luaL_checktype(L,2,LUA_TTABLE);
     if (!lua_getstack(L, level, &ar))  /* out of range? */
-        return luaL_argerror(L, 1, "level out of range");
+        return luaL_argerror(L, 1, "层级超出范围");
     lua_getinfo(L, "u", &ar);
     lua_setlocal(L, &ar, nvar + ar.nparams);
     return 0;
@@ -302,7 +302,7 @@ static int checkupval (lua_State *L, int argf, int argnup) {
   int nup = (int)luaL_checkinteger(L, argnup);  /* upvalue index */
   luaL_checktype(L, argf, LUA_TFUNCTION);  /* closure */
   luaL_argcheck(L, (lua_getupvalue(L, argf, nup) != NULL), argnup,
-                   "invalid upvalue index");
+                   "无效的上值索引");
   return nup;
 }
 
@@ -317,8 +317,8 @@ static int db_upvalueid (lua_State *L) {
 static int db_upvaluejoin (lua_State *L) {
   int n1 = checkupval(L, 1, 2);
   int n2 = checkupval(L, 3, 4);
-  luaL_argcheck(L, !lua_iscfunction(L, 1), 1, "Lua function expected");
-  luaL_argcheck(L, !lua_iscfunction(L, 3), 3, "Lua function expected");
+  luaL_argcheck(L, !lua_iscfunction(L, 1), 1, "期望 Lua 函数");
+  luaL_argcheck(L, !lua_iscfunction(L, 3), 3, "期望 Lua 函数");
   lua_upvaluejoin(L, 1, n1, 3, n2);
   return 0;
 }
