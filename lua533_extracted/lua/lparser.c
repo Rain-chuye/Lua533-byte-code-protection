@@ -2125,19 +2125,11 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
-  fs->f->is_vararg = 2;  /* main function is always declared vararg */
+  fs->f->is_vararg = 1;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
-  new_localvar(ls, ls->envn);
-  expdesc env;
-  singlevaraux(ls->fs, ls->envn, &env, 1);
-  adjust_assign(ls, 1, 1, &env);
-  adjustlocalvars(ls, 1);
   luaX_next(ls);  /* read first token */
-  if(ls->t.token==TK_STRING||ls->t.token=='{')
-    retstat(ls);
-  else
-    statlist(ls);  /* parse main body */
+  statlist(ls);  /* parse main body */
   check(ls, TK_EOS);
   close_func(ls);
 }

@@ -121,9 +121,12 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     inject_emoji_constants(L, f);
 
     // Increase stack size to provide slots for dynamic decryption (RK values)
-    f->scratch_base = f->maxstacksize;
-    if (f->maxstacksize <= 253) f->maxstacksize += 2;
-    else f->maxstacksize = 255;
+    if (f->maxstacksize <= 253) {
+        f->scratch_base = f->maxstacksize;
+        f->maxstacksize += 2;
+    } else {
+        f->scratch_base = 253; // Use last valid slots if maxed out
+    }
 
     if (encrypt_k) {
         for (int i = 0; i < f->sizek; i++) {
