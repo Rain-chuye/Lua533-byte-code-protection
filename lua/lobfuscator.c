@@ -94,6 +94,43 @@ static void fuse_instructions_internal(Proto *f) {
         }
     }
 
+    /* Pattern 5: t.k += val (Field Accumulation) */
+    if (f->sizecode >= 3) {
+        for (int i = 0; i < f->sizecode - 2; i++) {
+            Instruction inst1 = f->code[i];
+            Instruction inst2 = f->code[i+1];
+            Instruction inst3 = f->code[i+2];
+            if (GET_OPCODE(inst1) == OP_GETTABLE && GET_OPCODE(inst2) == OP_ADD && GET_OPCODE(inst3) == OP_SETTABLE) {
+                int ra1 = GETARG_A(inst1);
+                int t1 = GETARG_B(inst1);
+                int k1 = GETARG_C(inst1);
+
+                int ra2 = GETARG_A(inst2);
+                int rb2 = GETARG_B(inst2);
+                int rc2 = GETARG_C(inst2);
+
+                int t3 = GETARG_A(inst3);
+                int k3 = GETARG_B(inst3);
+                int rv3 = GETARG_C(inst3);
+
+                /* Case: R[ra1] = t1.k1; R[ra2] = R[ra1] + rc2; t1.k1 = R[ra2] */
+                if (ra1 == rb2 && ra2 == rv3 && t1 == t3 && k1 == k3) {
+                    f->code[i] = CREATE_ABC(OP_FUSE_ADD_TO_FIELD, t1, k1, rc2);
+                    f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    f->code[i+2] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    i += 2;
+                }
+                /* Case: R[ra1] = t1.k1; R[ra2] = rb2 + R[ra1]; t1.k1 = R[ra2] */
+                else if (ra1 == rc2 && ra2 == rv3 && t1 == t3 && k1 == k3) {
+                    f->code[i] = CREATE_ABC(OP_FUSE_ADD_TO_FIELD, t1, k1, rb2);
+                    f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    f->code[i+2] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+                    i += 2;
+                }
+            }
+        }
+    }
+
     /* Pattern 4: PARTICLE_DIST (Corrected match with EXTRAARG) */
     if (f->sizecode >= 7) {
         for (int i = 0; i < f->sizecode - 6; i++) {

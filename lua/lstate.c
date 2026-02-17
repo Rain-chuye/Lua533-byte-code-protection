@@ -30,11 +30,11 @@
 
 
 #if !defined(LUAI_GCPAUSE)
-#define LUAI_GCPAUSE	200  /* 200% */
+#define LUAI_GCPAUSE	140  /* 140% - More aggressive for Android */
 #endif
 
 #if !defined(LUAI_GCMUL)
-#define LUAI_GCMUL	200 /* GC runs 'twice the speed' of memory allocation */
+#define LUAI_GCMUL	250 /* Faster collection for Android */
 #endif
 
 

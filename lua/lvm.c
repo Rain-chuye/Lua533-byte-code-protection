@@ -783,6 +783,7 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 
 /* fetch an instruction and prepare its execution */
 #define vmfetch()	{ \
+  __builtin_prefetch(ci->u.l.savedpc + 1, 0, 3); \
   i = *(ci->u.l.savedpc++); \
   i = DECRYPT_INST(i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed); \
   if (__builtin_expect(L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT), 0)) \
@@ -848,7 +849,8 @@ void luaV_execute (lua_State *L) {
     &&L_OP_TESTSET, &&L_OP_CALL, &&L_OP_TAILCALL, &&L_OP_RETURN, &&L_OP_FORLOOP,
     &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST, &&L_OP_CLOSURE,
     &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC, &&L_OP_NEWARRAY, &&L_OP_TFOREACH,
-    &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST
+    &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST,
+    &&L_OP_FUSE_ADD_TO_FIELD
   };
 #endif
   CallInfo *ci = L->ci;
@@ -1092,6 +1094,46 @@ void luaV_execute (lua_State *L) {
         } else setfltvalue(ra, 0);
         vmbreak;
       }
+      vmcase(OP_FUSE_ADD_TO_FIELD) {
+        TValue *t_val = base + GETARG_A(i);
+        TValue *rk_key = get_rk_ptr(k, GETARG_B(i), base + cl->p->scratch_base);
+        TValue *rk_val = get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1);
+        if (__builtin_expect(ttistable(t_val), 1)) {
+            Table *h = hvalue(t_val);
+            TValue *old_field = NULL;
+            if (ttisshrstring(rk_key)) old_field = cast(TValue *, luaH_getstr(h, tsvalue(rk_key)));
+            else if (ttisinteger(rk_key)) old_field = cast(TValue *, luaH_getint(h, ivalue(rk_key)));
+
+            if (old_field && !ttisnil(old_field) && ttisnumber(old_field) && ttisnumber(rk_val)) {
+                if (ttisinteger(old_field) && ttisinteger(rk_val)) {
+                    setivalue(old_field, ivalue(old_field) + ivalue(rk_val));
+                } else {
+                    lua_Number n1 = 0, n2 = 0;
+                    tonumber(old_field, &n1);
+                    tonumber(rk_val, &n2);
+                    setfltvalue(old_field, luai_numadd(L, n1, n2));
+                }
+                vmbreak;
+            }
+        }
+        /* Fallback */
+        TValue temp_res;
+        gettableProtected(L, t_val, rk_key, &temp_res);
+        if (ttisnumber(&temp_res) && ttisnumber(rk_val)) {
+            if (ttisinteger(&temp_res) && ttisinteger(rk_val)) {
+                setivalue(&temp_res, ivalue(&temp_res) + ivalue(rk_val));
+            } else {
+                lua_Number n1 = 0, n2 = 0;
+                tonumber(&temp_res, &n1);
+                tonumber(rk_val, &n2);
+                setfltvalue(&temp_res, luai_numadd(L, n1, n2));
+            }
+        } else {
+            Protect(luaT_trybinTM(L, &temp_res, rk_val, &temp_res, TM_ADD));
+        }
+        settableProtected(L, t_val, rk_key, &temp_res);
+        vmbreak;
+      }
       vmcase(OP_SUB) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
@@ -1325,6 +1367,48 @@ void luaV_execute (lua_State *L) {
         int b = GETARG_B(i);
         int nresults = GETARG_C(i) - 1;
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+
+        /* Math Inlining Fast-Path */
+        if (b == 2 && ttisCclosure(ra)) {
+          lua_CFunction f = clCvalue(ra)->f;
+          if (f == G(L)->math_abs) {
+            TValue *arg = ra + 1;
+            if (ttisinteger(arg)) {
+              lua_Integer res = ivalue(arg);
+              if (res < 0) res = -res;
+              setivalue(ra, res);
+              goto l_call_fast_done;
+            } else if (ttisfloat(arg)) {
+              setfltvalue(ra, l_mathop(fabs)(fltvalue(arg)));
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_sqrt) {
+            lua_Number n;
+            if (tonumber(ra + 1, &n)) {
+              setfltvalue(ra, l_mathop(sqrt)(n));
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_floor) {
+            TValue *arg = ra + 1;
+            if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
+            else if (ttisfloat(arg)) {
+              lua_Integer res;
+              if (luaV_tointeger(arg, &res, 1)) { setivalue(ra, res); }
+              else { setfltvalue(ra, l_mathop(floor)(fltvalue(arg))); }
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_ceil) {
+            TValue *arg = ra + 1;
+            if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
+            else if (ttisfloat(arg)) {
+              lua_Integer res;
+              if (luaV_tointeger(arg, &res, 2)) { setivalue(ra, res); }
+              else { setfltvalue(ra, l_mathop(ceil)(fltvalue(arg))); }
+              goto l_call_fast_done;
+            }
+          }
+        }
+
         if (luaD_precall(L, ra, nresults)) {  /* C function? */
           if (nresults >= 0)
             L->top = ci->top;  /* adjust results */
@@ -1334,6 +1418,9 @@ void luaV_execute (lua_State *L) {
           ci = L->ci;
           goto newframe;  /* restart luaV_execute over new Lua function */
         }
+        vmbreak;
+      l_call_fast_done:
+        if (nresults >= 0) L->top = ci->top;
         vmbreak;
       }
       vmcase(OP_TAILCALL) {
@@ -1446,12 +1533,36 @@ void luaV_execute (lua_State *L) {
           vmbreak;
         }
       vmcase(OP_TFORCALL) {
-        StkId cb = ra + 3;  /* call base */
-        setobjs2s(L, cb+2, ra+2);
-        setobjs2s(L, cb+1, ra+1);
-        setobjs2s(L, cb, ra);
-        L->top = cb + 3;  /* func. + 2 args (state and index) */
-        Protect(luaD_call(L, cb, GETARG_C(i)));
+        if (ttisCclosure(ra)) {
+          CClosure *cc = clCvalue(ra);
+          if (cc->f == G(L)->ipairs_iter && ttistable(ra + 1) && ttisinteger(ra + 2)) {
+            Table *t = hvalue(ra + 1);
+            lua_Integer idx = ivalue(ra + 2) + 1;
+            const TValue *val = (idx > 0 && idx <= t->sizearray)
+                                ? &t->array[idx - 1]
+                                : luaH_getint(t, idx);
+            if (!ttisnil(val)) {
+              setivalue(ra + 3, idx);
+              setobj2s(L, ra + 4, val);
+              goto l_tfor_skip_call;
+            }
+          }
+          else if (cc->f == G(L)->pairs_iter && ttistable(ra + 1)) {
+            setobj2s(L, ra + 3, ra + 2);
+            if (luaH_next(L, hvalue(ra + 1), ra + 3)) {
+              goto l_tfor_skip_call;
+            }
+          }
+        }
+        {
+          StkId cb = ra + 3;  /* call base */
+          setobjs2s(L, cb+2, ra+2);
+          setobjs2s(L, cb+1, ra+1);
+          setobjs2s(L, cb, ra);
+          L->top = cb + 3;  /* func. + 2 args (state and index) */
+          Protect(luaD_call(L, cb, GETARG_C(i)));
+        }
+      l_tfor_skip_call:
         L->top = ci->top;
         i = *(ci->u.l.savedpc++);  /* go to next instruction */
         i = DECRYPT_INST(i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);

@@ -239,11 +239,12 @@ OP_NEWARRAY,/*	A B C	R(A) := {} (size = B,C)				*/
     OP_FUSE_GETGETSUB,
     OP_FAST_DIST,
     OP_FUSE_NOP,
-    OP_FUSE_PARTICLE_DIST
+    OP_FUSE_PARTICLE_DIST,
+    OP_FUSE_ADD_TO_FIELD
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_FUSE_PARTICLE_DIST) + 1)
+#define NUM_OPCODES	(cast(int, OP_FUSE_ADD_TO_FIELD) + 1)
 
 
 

@@ -76,6 +76,7 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "FAST_DIST",
   "FUSE_NOP",
   "FUSE_PARTICLE_DIST",
+  "FUSE_ADD_TO_FIELD",
   NULL
 };
 
@@ -142,4 +143,5 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FAST_DIST */
  ,opmode(0, 0, OpArgN, OpArgN, iABC)		/* OP_FUSE_NOP */
  ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FUSE_PARTICLE_DIST */
+ ,opmode(0, 0, OpArgR, OpArgK, iABC)		/* OP_FUSE_ADD_TO_FIELD */
 };

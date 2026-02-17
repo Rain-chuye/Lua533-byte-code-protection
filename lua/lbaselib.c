@@ -672,6 +672,8 @@ LUAMOD_API int luaopen_base (lua_State *L) {
   lua_pushliteral(L, LUA_VERSION);
   lua_setfield(L, -2, "_VERSION");
   /* register load alias if it exists */
+  G(L)->ipairs_iter = ipairsaux;
+  G(L)->pairs_iter = luaB_next;
   if (G(L)->loadalias) {
     lua_getfield(L, -1, "load");
     lua_pushstring(L, getstr(G(L)->loadalias));

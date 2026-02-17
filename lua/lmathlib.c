@@ -19,6 +19,7 @@
 
 #include "lauxlib.h"
 #include "lualib.h"
+#include "lstate.h"
 
 
 #undef PI
@@ -730,5 +731,9 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   lua_pushinteger(L, LUA_MININTEGER);
   lua_setfield(L, -2, "mininteger");
   setrandfunc(L);
+  G(L)->math_abs = math_abs;
+  G(L)->math_sqrt = math_sqrt;
+  G(L)->math_floor = math_floor;
+  G(L)->math_ceil = math_ceil;
   return 1;
 }

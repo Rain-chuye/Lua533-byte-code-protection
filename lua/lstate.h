@@ -152,6 +152,12 @@ typedef struct global_State {
   TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
   TValue nilvalue;
   TString *loadalias;
+  lua_CFunction ipairs_iter;
+  lua_CFunction pairs_iter;
+  lua_CFunction math_abs;
+  lua_CFunction math_sqrt;
+  lua_CFunction math_floor;
+  lua_CFunction math_ceil;
 } global_State;
 
 
