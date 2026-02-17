@@ -48,75 +48,136 @@ static void shuffle_alphabet(char *alphabet, unsigned int seed) {
     }
 }
 
-/* Simple LZ77-based compression */
+/* Advanced LZ77-based compression with Bit-level coding */
+typedef struct {
+    unsigned char *data;
+    size_t pos;
+    size_t cap;
+    unsigned int bit_buf;
+    int bit_cnt;
+} BitStream;
+
+static void bs_init(BitStream *bs, size_t cap) {
+    bs->data = (unsigned char *)malloc(cap);
+    bs->pos = 0;
+    bs->cap = cap;
+    bs->bit_buf = 0;
+    bs->bit_cnt = 0;
+}
+
+static void bs_write(BitStream *bs, unsigned int val, int bits) {
+    bs->bit_buf |= (val << bs->bit_cnt);
+    bs->bit_cnt += bits;
+    while (bs->bit_cnt >= 8) {
+        if (bs->pos >= bs->cap) {
+            bs->cap *= 2;
+            bs->data = (unsigned char *)realloc(bs->data, bs->cap);
+        }
+        bs->data[bs->pos++] = (unsigned char)(bs->bit_buf & 0xFF);
+        bs->bit_buf >>= 8;
+        bs->bit_cnt -= 8;
+    }
+}
+
+static void bs_flush(BitStream *bs) {
+    if (bs->bit_cnt > 0) {
+        if (bs->pos >= bs->cap) {
+            bs->cap *= 2;
+            bs->data = (unsigned char *)realloc(bs->data, bs->cap);
+        }
+        bs->data[bs->pos++] = (unsigned char)(bs->bit_buf & 0xFF);
+    }
+}
+
+static unsigned int bs_read(BitStream *bs, int bits, const unsigned char *input, size_t len) {
+    while (bs->bit_cnt < bits) {
+        unsigned int b = (bs->pos < len) ? input[bs->pos++] : 0;
+        bs->bit_buf |= (b << bs->bit_cnt);
+        bs->bit_cnt += 8;
+    }
+    unsigned int res = bs->bit_buf & ((1U << bits) - 1);
+    bs->bit_buf >>= bits;
+    bs->bit_cnt -= bits;
+    return res;
+}
+
 LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, size_t *out_len) {
     if (len == 0) { *out_len = 0; return NULL; }
-    unsigned char *output = (unsigned char *)malloc(len * 2 + 16);
-    size_t in_pos = 0;
-    size_t out_pos = 0;
+    BitStream bs;
+    bs_init(&bs, len + 64);
 
+    // Write original length as ULEB128
+    size_t temp_len = len;
+    do {
+        unsigned char b = temp_len & 0x7F;
+        temp_len >>= 7;
+        if (temp_len > 0) b |= 0x80;
+        bs_write(&bs, b, 8);
+    } while (temp_len > 0);
+
+    size_t in_pos = 0;
     while (in_pos < len) {
         int best_len = 0;
         int best_off = 0;
-        int max_lookback = (in_pos > 4095) ? 4095 : (int)in_pos;
+        int max_lookback = (in_pos > 32767) ? 32767 : (int)in_pos;
 
         for (int off = 1; off <= max_lookback; off++) {
             int l = 0;
-            while (l < 127 && in_pos + l < len && input[in_pos - off + l] == input[in_pos + l]) {
+            while (l < 258 && in_pos + l < len && input[in_pos - off + l] == input[in_pos + l]) {
                 l++;
             }
             if (l > best_len) {
                 best_len = l;
                 best_off = off;
+                if (l == 258) break;
             }
         }
 
         if (best_len >= 3) {
-            output[out_pos++] = 0x80 | (unsigned char)best_len;
-            output[out_pos++] = (unsigned char)(best_off & 0xFF);
-            output[out_pos++] = (unsigned char)(best_off >> 8);
+            bs_write(&bs, 1, 1); // 1 = Match
+            bs_write(&bs, best_len - 3, 8);
+            bs_write(&bs, best_off - 1, 15);
             in_pos += best_len;
         } else {
-            unsigned char c = input[in_pos++];
-            if (c >= 0x7F) {
-                output[out_pos++] = 0x7F;
-                output[out_pos++] = c;
-            } else {
-                output[out_pos++] = c;
-            }
+            bs_write(&bs, 0, 1); // 0 = Literal
+            bs_write(&bs, input[in_pos++], 8);
         }
     }
-    *out_len = out_pos;
-    return output;
+    bs_flush(&bs);
+    *out_len = bs.pos;
+    return bs.data;
 }
 
 LUALIB_API unsigned char *luaL_decompress(const unsigned char *input, size_t len, size_t *out_len) {
     if (len == 0) { *out_len = 0; return NULL; }
-    // We don't know the exact size, so we'll use a dynamic buffer or a safe estimate
-    // Since it's Lua bytecode, we can expect maybe 4x expansion max
-    size_t capacity = len * 4 + 1024;
-    unsigned char *output = (unsigned char *)malloc(capacity);
-    size_t in_pos = 0;
+    BitStream bs;
+    bs.pos = 0;
+    bs.bit_buf = 0;
+    bs.bit_cnt = 0;
+
+    // Read original length (ULEB128)
+    size_t orig_len = 0;
+    int shift = 0;
+    unsigned char b;
+    do {
+        b = input[bs.pos++];
+        orig_len |= (size_t)(b & 0x7F) << shift;
+        shift += 7;
+    } while (b & 0x80);
+
+    unsigned char *output = (unsigned char *)malloc(orig_len + 1);
     size_t out_pos = 0;
 
-    while (in_pos < len) {
-        if (out_pos + 16 > capacity) {
-            capacity *= 2;
-            output = (unsigned char *)realloc(output, capacity);
-        }
-        unsigned char c = input[in_pos++];
-        if (c == 0x7F) {
-            output[out_pos++] = input[in_pos++];
-        } else if (c & 0x80) {
-            int match_len = c & 0x7F;
-            int off = input[in_pos++];
-            off |= (input[in_pos++] << 8);
+    while (out_pos < orig_len) {
+        if (bs_read(&bs, 1, input, len)) { // Match
+            int match_len = bs_read(&bs, 8, input, len) + 3;
+            int off = bs_read(&bs, 15, input, len) + 1;
             for (int i = 0; i < match_len; i++) {
                 output[out_pos] = output[out_pos - off];
                 out_pos++;
             }
-        } else {
-            output[out_pos++] = c;
+        } else { // Literal
+            output[out_pos++] = (unsigned char)bs_read(&bs, 8, input, len);
         }
     }
     *out_len = out_pos;

@@ -288,6 +288,7 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     /* 4. Apply Dynamic Encryption with Per-Function Seed */
     f->inst_seed = (unsigned int)rand();
+    /* Apply encryption after all optimizations to maintain patterns as long as possible */
     for (int i = 0; i < f->sizecode; i++) {
         f->code[i] = ENCRYPT_INST(f->code[i], i, f->inst_seed);
     }
@@ -312,9 +313,6 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
     // Strip debug info explicitly
     if (f->lineinfo) { luaM_freearray(L, f->lineinfo, f->sizelineinfo); f->lineinfo = NULL; f->sizelineinfo = 0; }
     if (f->locvars) {
-        // We don't free locvars because ldump.c still iterates over n=0,
-        // but let's ensure n is 0 and names are cleared if we wanted to be super thorough.
-        // Actually, ldump.c uses f->sizelocvars.
         f->sizelocvars = 0;
     }
     if (f->upvalues) {

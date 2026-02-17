@@ -75,8 +75,6 @@ static void DumpString (const TString *s, DumpState *D) {
   if (s == NULL)
     DumpByte(0, D);
   else {
-    //nirenr mod
-    //size_t size = tsslen(s) + 1;  /* include trailing '\0' */
     unsigned int size = tsslen(s) + 1;  /* include trailing '\0' */
     const char *str = getstr(s);
     if (size < 0xFF)
