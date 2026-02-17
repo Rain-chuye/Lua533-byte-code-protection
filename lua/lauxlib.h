@@ -99,6 +99,7 @@ LUALIB_API void (luaL_requiref) (lua_State *L, const char *modname,
                                  lua_CFunction openf, int glb);
 
 LUALIB_API unsigned int (luaL_crc32) (const unsigned char *data, size_t len);
+LUALIB_API void (luaL_hmac_sha256)(const unsigned char *key, size_t key_len, const unsigned char *data, size_t data_len, unsigned char out[32]);
 LUALIB_API unsigned char *(luaL_compress)(const unsigned char *input, size_t len, size_t *out_len);
 LUALIB_API unsigned char *(luaL_decompress)(const unsigned char *input, size_t len, size_t *out_len);
 LUALIB_API unsigned char *(luaL_decrypt_chuye) (const char *input, size_t len, size_t *out_len);

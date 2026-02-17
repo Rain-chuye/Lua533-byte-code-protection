@@ -412,6 +412,7 @@ typedef struct Proto {
   lu_byte is_vararg;  /* 2: declared vararg; 1: uses vararg */
   lu_byte maxstacksize;  /* number of registers needed by this function */
   lu_byte obfuscated;
+  lu_byte reg_seed;
   int scratch_base;
   unsigned int inst_seed;
   lu_byte *op_map;

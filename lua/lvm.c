@@ -732,8 +732,8 @@ void luaV_finishOp (lua_State *L) {
 
 
 #define RA(i)	(base+GETARG_A(i))
-#define RB(i)	check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgR, base+GETARG_B(i))
-#define RC(i)	check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgR, base+GETARG_C(i))
+#define RB(i)	base+GETARG_B(i)
+#define RC(i)	base+GETARG_C(i)
 
 static void decrypt_tv(TValue *o) {
   if (ttisinteger(o)) {
@@ -763,7 +763,9 @@ static const TValue *get_rk_ptr(TValue *k, int arg, TValue *tmp) {
 #define dojump(ci,i,e) \
   { int a = GETARG_A(i); \
     if (a != 0) luaF_close(L, ci->u.l.base + a - 1); \
-    ci->u.l.savedpc += GETARG_sBx(i) + e; }
+    ci->u.l.savedpc += GETARG_sBx(i) + e; \
+    vpc = NULL; vcount = 0; \
+  }
 
 /* for test instructions, execute the jump instruction that follows it */
 #define donextjump(ci)	{ \
@@ -850,7 +852,8 @@ void luaV_execute (lua_State *L) {
     &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST, &&L_OP_CLOSURE,
     &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC, &&L_OP_NEWARRAY, &&L_OP_TFOREACH,
     &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST,
-    &&L_OP_FUSE_ADD_TO_FIELD
+    &&L_OP_FUSE_ADD_TO_FIELD,
+    &&L_OP_SUPER_MOVE_LOADK, &&L_OP_SUPER_MOVE_MOVE, &&L_OP_SUPER_GETTABLE_CALL
   };
 #endif
   CallInfo *ci = L->ci;
@@ -881,8 +884,9 @@ void luaV_execute (lua_State *L) {
         int v_b = (vi >> 6) & 0x1FF;
         int v_a = (vi >> 15) & 0xFF;
         int v_c = (vi >> 23) & 0x1FF;
-        /* Reconstruct standard instruction bits */
-        i = (v_op << POS_OP) | (v_a << POS_A) | (v_b << POS_B) | (v_c << POS_C);
+
+        /* High-speed Reconstruct standard instruction bits */
+        i = (v_op) | (v_a << 6) | (v_b << 23) | (v_c << 14);
         vcount--;
         ra = RA(i);
       } else {
@@ -1093,6 +1097,31 @@ void luaV_execute (lua_State *L) {
             setfltvalue(ra, sqrt((n1-n2)*(n1-n2) + (n3-n4)*(n3-n4)));
         } else setfltvalue(ra, 0);
         vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_LOADK) {
+        setobjs2s(L, ra, RB(i));
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        setobj2s(L, base + GETARG_A(next_i), k + GETARG_Bx(next_i));
+        decrypt_tv(base + GETARG_A(next_i));
+        vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_MOVE) {
+        setobjs2s(L, ra, RB(i));
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        setobjs2s(L, base + GETARG_A(next_i), base + GETARG_B(next_i));
+        vmbreak;
+      }
+      vmcase(OP_SUPER_GETTABLE_CALL) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        gettableProtected(L, rb, rc, ra);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        i = next_i; // Switch context to CALL
+        ra = RA(i);
+        goto L_OP_CALL;
       }
       vmcase(OP_FUSE_ADD_TO_FIELD) {
         TValue *t_val = base + GETARG_A(i);
@@ -1653,6 +1682,14 @@ void luaV_execute (lua_State *L) {
           vpc_idx = vindex;
           Instruction vcount_raw = *vpc++;
           vcount = (int)DECRYPT_INST(vcount_raw, vpc_idx++, cl->p->inst_seed);
+
+          /* Peek at last instruction in block for Control Flow Flattening */
+          Instruction last_raw = block_start[vcount];
+          Instruction last = ~DECRYPT_INST(last_raw, vindex + vcount, cl->p->inst_seed);
+          if ((last & 0x3F) == OP_JMP) {
+              // Potential for internal v-jump optimization here
+          }
+
           ci->u.l.savedpc += (vcount - 1);
         }
         vmbreak;

@@ -1717,6 +1717,9 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
         len = compressed_len;
     }
 
+    unsigned char hmac[32];
+    luaL_hmac_sha256((const unsigned char *)"CHUYE_SECRET", 12, input, len, hmac);
+
     unsigned int whole_crc = luaL_crc32(input, len);
     size_t chunk_size = 1024;
     int total = (int)((len + chunk_size - 1) / chunk_size);

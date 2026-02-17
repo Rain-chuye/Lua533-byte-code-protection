@@ -240,11 +240,14 @@ OP_NEWARRAY,/*	A B C	R(A) := {} (size = B,C)				*/
     OP_FAST_DIST,
     OP_FUSE_NOP,
     OP_FUSE_PARTICLE_DIST,
-    OP_FUSE_ADD_TO_FIELD
+    OP_FUSE_ADD_TO_FIELD,
+    OP_SUPER_MOVE_LOADK,
+    OP_SUPER_MOVE_MOVE,
+    OP_SUPER_GETTABLE_CALL
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_FUSE_ADD_TO_FIELD) + 1)
+#define NUM_OPCODES	(cast(int, OP_SUPER_GETTABLE_CALL) + 1)
 
 
 

@@ -197,6 +197,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
   DumpByte(f->is_vararg, D);
   DumpByte(f->maxstacksize, D);
   DumpByte(f->obfuscated, D);
+  DumpByte(f->reg_seed, D);
   DumpInt(f->scratch_base, D);
   DumpInt(f->inst_seed, D);
   DumpOpMap(f, D);

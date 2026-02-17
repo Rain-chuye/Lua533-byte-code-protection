@@ -131,6 +131,26 @@ static void fuse_instructions_internal(Proto *f) {
         }
     }
 
+    /* Pattern: Super-Opcodes */
+    for (int i = 0; i < f->sizecode - 1; i++) {
+        Instruction i1 = f->code[i];
+        Instruction i2 = f->code[i+1];
+        if (GET_OPCODE(i1) == OP_MOVE) {
+            if (GET_OPCODE(i2) == OP_LOADK) {
+                f->code[i] = CREATE_ABC(OP_SUPER_MOVE_LOADK, GETARG_A(i1), GETARG_B(i1), 0);
+                i++;
+            } else if (GET_OPCODE(i2) == OP_MOVE) {
+                f->code[i] = CREATE_ABC(OP_SUPER_MOVE_MOVE, GETARG_A(i1), GETARG_B(i1), 0);
+                i++;
+            }
+        } else if (GET_OPCODE(i1) == OP_GETTABLE) {
+            if (GET_OPCODE(i2) == OP_CALL && GETARG_A(i1) == GETARG_A(i2)) {
+                f->code[i] = CREATE_ABC(OP_SUPER_GETTABLE_CALL, GETARG_A(i1), GETARG_B(i1), GETARG_C(i1));
+                i++;
+            }
+        }
+    }
+
     /* Pattern 4: PARTICLE_DIST (Corrected match with EXTRAARG) */
     if (f->sizecode >= 7) {
         for (int i = 0; i < f->sizecode - 6; i++) {
@@ -175,21 +195,28 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             if (i + 1 < old_sizecode) is_target[i + 1] = 1;
         }
     }
-    Instruction *temp_vcode = luaM_newvector(L, old_sizecode * 2, Instruction);
+    Instruction *temp_vcode = luaM_newvector(L, old_sizecode * 3, Instruction);
     int vcode_ptr = 0;
+
+    // Aggressive basic block virtualization
     for (int i = 0; i < old_sizecode; ) {
         int start = i;
         int count = 0;
         while (i < old_sizecode) {
             Instruction inst = f->code[i];
             OpCode op = GET_OPCODE(inst);
-            int is_safe = (op == OP_MOVE || op == OP_LOADK || op == OP_LOADNIL || op == OP_GETUPVAL);
-            if (!is_safe) break;
-            if (i > start && is_target[i]) break;
+            // Blocks now include any instruction except those that change control flow in complex ways
+            int is_terminal = (op == OP_JMP || op == OP_FORLOOP || op == OP_FORPREP || op == OP_TFORLOOP ||
+                               op == OP_RETURN || op == OP_CALL || op == OP_TAILCALL || op == OP_TFORCALL ||
+                               op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET);
+
+            if (i > start && is_target[i]) break; // Start of a jump target
             i++; count++;
-            if (count >= 255) break;
+            if (is_terminal) break; // Terminate block after control flow instruction
+            if (count >= 250) break;
         }
-        if (count > 1 && vcode_ptr < (1 << 26)) {
+
+        if (count > 0 && vcode_ptr < (1 << 25)) {
             int vindex = vcode_ptr;
             temp_vcode[vcode_ptr++] = (Instruction)count;
             for (int j = 0; j < count; j++) {
@@ -197,18 +224,66 @@ static void virtualize_proto_internal(lua_State *L, Proto *f) {
             }
             f->code[start] = CREATE_Ax(OP_VIRTUAL, vindex);
             for (int j = 1; j < count; j++) {
-                f->code[start + j] = CREATE_Ax(OP_EXTRAARG, 0);
+                f->code[start + j] = CREATE_Ax(OP_EXTRAARG, 0x3FFFFFF & (unsigned int)rand()); // Opaque noise
             }
         } else {
             i = start + 1;
         }
     }
+
     if (vcode_ptr > 0) {
-        f->vcode = luaM_newvector(L, vcode_ptr, Instruction);
-        memcpy(f->vcode, temp_vcode, vcode_ptr * sizeof(Instruction));
+        /* Shuffle Basic Blocks for Control Flow Flattening */
+        int num_blocks = 0;
+        int p = 0;
+        while (p < vcode_ptr) { num_blocks++; p += (1 + (int)temp_vcode[p]); }
+
+        int *block_offsets = luaM_newvector(L, num_blocks, int);
+        int *shuffled_indices = luaM_newvector(L, num_blocks, int);
+        p = 0;
+        for (int i = 0; i < num_blocks; i++) {
+            block_offsets[i] = p;
+            shuffled_indices[i] = i;
+            p += (1 + (int)temp_vcode[p]);
+        }
+        // Shuffle
+        for (int i = num_blocks - 1; i > 0; i--) {
+            int j = rand() % (i + 1);
+            int t = shuffled_indices[i]; shuffled_indices[i] = shuffled_indices[j]; shuffled_indices[j] = t;
+        }
+
+        Instruction *shuffled_vcode = luaM_newvector(L, vcode_ptr, Instruction);
+        int *new_offsets = luaM_newvector(L, num_blocks, int);
+        int sp = 0;
+        for (int i = 0; i < num_blocks; i++) {
+            int old_idx = shuffled_indices[i];
+            int old_off = block_offsets[old_idx];
+            int len = 1 + (int)temp_vcode[old_off];
+            new_offsets[old_idx] = sp;
+            memcpy(shuffled_vcode + sp, temp_vcode + old_off, len * sizeof(Instruction));
+            sp += len;
+        }
+
+        // Update OP_VIRTUAL indices in main code
+        for (int i = 0; i < old_sizecode; i++) {
+            if (GET_OPCODE(f->code[i]) == OP_VIRTUAL) {
+                int old_vidx = GETARG_Ax(f->code[i]);
+                // Find which block this offset belongs to
+                for (int b = 0; b < num_blocks; b++) {
+                    if (block_offsets[b] == old_vidx) {
+                        SETARG_Ax(f->code[i], new_offsets[b]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        f->vcode = shuffled_vcode;
         f->sizevcode = vcode_ptr;
+        luaM_freearray(L, block_offsets, num_blocks);
+        luaM_freearray(L, shuffled_indices, num_blocks);
+        luaM_freearray(L, new_offsets, num_blocks);
     }
-    luaM_freearray(L, temp_vcode, old_sizecode * 2);
+    luaM_freearray(L, temp_vcode, old_sizecode * 3);
     luaM_freearray(L, is_target, old_sizecode);
 }
 
@@ -288,6 +363,7 @@ void obfuscate_proto(lua_State *L, Proto *f, int encrypt_k) {
 
     /* 4. Apply Dynamic Encryption with Per-Function Seed */
     f->inst_seed = (unsigned int)rand();
+    f->reg_seed = (lu_byte)rand();
     /* Apply encryption after all optimizations to maintain patterns as long as possible */
     for (int i = 0; i < f->sizecode; i++) {
         f->code[i] = ENCRYPT_INST(f->code[i], i, f->inst_seed);

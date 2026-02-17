@@ -235,6 +235,7 @@ static void LoadFunction (LoadState *S, Proto *f, TString *psource) {
   f->is_vararg = LoadByte(S);
   f->maxstacksize = LoadByte(S);
   f->obfuscated = LoadByte(S);
+  f->reg_seed = LoadByte(S);
   f->scratch_base = LoadInt(S);
   f->inst_seed = LoadInt(S);
   LoadOpMap(S, f);

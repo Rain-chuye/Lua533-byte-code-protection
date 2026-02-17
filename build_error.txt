@@ -1,0 +1,554 @@
+In file included from lua/lua.h:16,
+                 from lua/lapi.c:16:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lcode.c:16:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lctype.h:10,
+                 from lua/lctype.c:13:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ldebug.c:17:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ldo.c:18:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ldump.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lfunc.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lgc.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/linit.c:32:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/liolib.c:24:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/llex.c:16:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lmathlib.c:18:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lmem.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/loadlib.c:21:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lobject.c:20:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/llimits.h:15,
+                 from lua/lopcodes.h:10,
+                 from lua/lopcodes.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/loslib.c:26:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/llimits.h:15,
+                 from lua/lobfuscator.h:4,
+                 from lua/lparser.c:14:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lstate.c:16:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lstring.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lstrlib.c:23:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ltable.c:29:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ltablib.c:17:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ltm.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lundump.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lutf8lib.c:3:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lvm.c:19:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lobject.h:15,
+                 from lua/lstate.h:12,
+                 from lua/ldebug.h:11,
+                 from lua/lvm.c:21:
+lua/lvm.c: In function ‘luaV_execute’:
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:941:22: note: in expansion of macro ‘RKC’
+  941 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:947:22: note: in expansion of macro ‘RKC’
+  947 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:961:22: note: in expansion of macro ‘RKB’
+  961 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:962:22: note: in expansion of macro ‘RKC’
+  962 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:988:22: note: in expansion of macro ‘RKB’
+  988 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:989:22: note: in expansion of macro ‘RKC’
+  989 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1032:22: note: in expansion of macro ‘RKC’
+ 1032 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1042:22: note: in expansion of macro ‘RKB’
+ 1042 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1043:22: note: in expansion of macro ‘RKC’
+ 1043 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1118:22: note: in expansion of macro ‘RKC’
+ 1118 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/lvm.c:1128:26: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1128 |         TValue *rk_key = get_rk_ptr(k, GETARG_B(i), base + cl->p->scratch_base);
+      |                          ^~~~~~~~~~
+lua/lvm.c:1129:26: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1129 |         TValue *rk_val = get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1);
+      |                          ^~~~~~~~~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1167:22: note: in expansion of macro ‘RKB’
+ 1167 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1168:22: note: in expansion of macro ‘RKC’
+ 1168 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1182:22: note: in expansion of macro ‘RKB’
+ 1182 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1183:22: note: in expansion of macro ‘RKC’
+ 1183 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1197:22: note: in expansion of macro ‘RKB’
+ 1197 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1198:22: note: in expansion of macro ‘RKC’
+ 1198 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1207:22: note: in expansion of macro ‘RKB’
+ 1207 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1208:22: note: in expansion of macro ‘RKC’
+ 1208 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1217:22: note: in expansion of macro ‘RKB’
+ 1217 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1218:22: note: in expansion of macro ‘RKC’
+ 1218 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1227:22: note: in expansion of macro ‘RKB’
+ 1227 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1228:22: note: in expansion of macro ‘RKC’
+ 1228 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1237:22: note: in expansion of macro ‘RKB’
+ 1237 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1238:22: note: in expansion of macro ‘RKC’
+ 1238 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1247:22: note: in expansion of macro ‘RKB’
+ 1247 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1248:22: note: in expansion of macro ‘RKC’
+ 1248 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1257:22: note: in expansion of macro ‘RKB’
+ 1257 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1258:22: note: in expansion of macro ‘RKC’
+ 1258 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1273:22: note: in expansion of macro ‘RKB’
+ 1273 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1274:22: note: in expansion of macro ‘RKC’
+ 1274 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1287:22: note: in expansion of macro ‘RKB’
+ 1287 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1288:22: note: in expansion of macro ‘RKC’
+ 1288 |         TValue *rc = RKC(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1350:22: note: in expansion of macro ‘RKB’
+ 1350 |         TValue *rb = RKB(i);
+      |                      ^~~
+lua/llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lua/lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lua/lvm.c:1351:22: note: in expansion of macro ‘RKC’
+ 1351 |         TValue *rc = RKC(i);
+      |                      ^~~
+In file included from lua/lvm.c:26:
+lua/lopcodes.h:137:25: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  137 | #define ISK(x)          ((x) & BITRK)
+      |                         ^
+lua/lvm.c:1704:26: note: in expansion of macro ‘ISK’
+ 1704 |         TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+      |                          ^~~
+lua/lopcodes.h:137:25: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  137 | #define ISK(x)          ((x) & BITRK)
+      |                         ^
+lua/lvm.c:1725:26: note: in expansion of macro ‘ISK’
+ 1725 |         TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+      |                          ^~~
+In file included from lua/lua.h:16,
+                 from lua/lzio.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/llimits.h:15,
+                 from lua/lobfuscator.h:4,
+                 from lua/lobfuscator.c:1:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lauxlib.c:25:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lbaselib.c:18:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lbitlib.c:13:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lcorolib.c:15:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/ldblib.c:17:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua/lua.h:16,
+                 from lua/lua.c:17:
+lua/luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+/usr/bin/ld: /tmp/ccJir2r8.o: in function `pushline':
+lua.c:(.text+0x24b): undefined reference to `readline'
+/usr/bin/ld: /tmp/ccJir2r8.o: in function `doREPL':
+lua.c:(.text+0x3e5): undefined reference to `add_history'
+/usr/bin/ld: lua.c:(.text+0x4a1): undefined reference to `add_history'
+/usr/bin/ld: lua.c:(.text+0x565): undefined reference to `add_history'
+collect2: error: ld returned 1 exit status

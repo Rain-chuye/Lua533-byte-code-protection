@@ -144,4 +144,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, OpArgN, OpArgN, iABC)		/* OP_FUSE_NOP */
  ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FUSE_PARTICLE_DIST */
  ,opmode(0, 0, OpArgR, OpArgK, iABC)		/* OP_FUSE_ADD_TO_FIELD */
+ ,opmode(0, 1, OpArgR, OpArgN, iABC)		/* OP_SUPER_MOVE_LOADK */
+ ,opmode(0, 1, OpArgR, OpArgN, iABC)		/* OP_SUPER_MOVE_MOVE */
+ ,opmode(0, 1, OpArgR, OpArgK, iABC)		/* OP_SUPER_GETTABLE_CALL */
 };
