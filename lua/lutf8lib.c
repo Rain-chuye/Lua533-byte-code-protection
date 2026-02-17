@@ -374,8 +374,8 @@ static int Lutf8_codepoint(lua_State *L) {
   lua_Integer pose = byterelat(luaL_optinteger(L, 3, posi), len);
   int n;
   const char *se;
-  luaL_argcheck(L, posi >= 1, 2, "out of range");
-  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of range");
+  luaL_argcheck(L, posi >= 1, 2, "out of range (PS: 超出范围)");
+  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of range (PS: 超出范围)");
   if (posi > pose) return 0;  /* empty interval; return no values */
   n = (int)(pose -  posi + 1);
   if (posi + n <= pose)  /* (lua_Integer -> int) overflow? */
@@ -459,7 +459,7 @@ static int Lutf8_escape(lua_State *L) {
         goto next;
       }
       if (s >= e)
-        luaL_error(L, "invalid escape sequence");
+        luaL_error(L, "invalid escape sequence (PS: 无效转义序列)");
       s = parse_escape(L, s, e, is_hex, &ch);
     }
 next:

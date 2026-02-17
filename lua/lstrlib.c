@@ -193,7 +193,7 @@ static int str_dump (lua_State *L) {
     lua_settop(L, 1);
     luaL_buffinit(L,&b);
     if (lua_dump(L, writer, &b, strip) != 0)
-        return luaL_error(L, "unable to dump given function");
+        return luaL_error(L, "unable to dump given function (PS: 无法 dump 给定函数)");
     luaL_pushresult(&b);
     return 1;
 }
@@ -1051,7 +1051,7 @@ static const char *scanformat (lua_State *L, const char *strfrmt, char *form) {
     if (isdigit(uchar(*p))) p++;  /* (2 digits at most) */
   }
   if (isdigit(uchar(*p)))
-    luaL_error(L, "invalid format (width or precision too long)");
+    luaL_error(L, "invalid format (width or precision too long) (PS: 无效格式 (宽度或精度太长))");
   *(form++) = '%';
   memcpy(form, strfrmt, ((p - strfrmt) + 1) * sizeof(char));
   form += (p - strfrmt) + 1;
@@ -1143,8 +1143,8 @@ static int str_format (lua_State *L) {
           break;
         }
         default: {  /* also treat cases 'pnLlh' */
-          return luaL_error(L, "invalid option '%%%c' to 'format'",
-                               *(strfrmt - 1));
+          return luaL_error(L, "invalid option '%%%c' to 'format' (PS: 'format' 的选项 '%%%c' 无效)",
+                            *(strfrmt - 1), *(strfrmt - 1));
         }
       }
       lua_assert(nb < MAX_ITEM);
@@ -1514,7 +1514,7 @@ static int str_pack (lua_State *L) {
         size_t len;
         const char *s = luaL_checklstring(L, arg, &len);
         luaL_argcheck(L, len <= (size_t)size, arg,
-                         "string longer than given size");
+                         "string longer than given size (PS: 字符串长于给定大小)");
         luaL_addlstring(&b, s, len);  /* add string */
         while (len++ < (size_t)size)  /* pad extra space */
           luaL_addchar(&b, LUAL_PACKPADBYTE);
@@ -1617,7 +1617,7 @@ static int str_unpack (lua_State *L) {
   const char *data = luaL_checklstring(L, 2, &ld);
   size_t pos = (size_t)posrelat(luaL_optinteger(L, 3, 1), ld) - 1;
   int n = 0;  /* number of results */
-  luaL_argcheck(L, pos <= ld, 3, "initial position out of string");
+  luaL_argcheck(L, pos <= ld, 3, "initial position out of string (PS: 初始位置超出字符串)");
   initheader(L, &h);
   while (*fmt != '\0') {
     int size, ntoalign;
