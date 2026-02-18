@@ -130,6 +130,12 @@ LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, 
 
     int *head = (int *)malloc(HASH_SIZE * sizeof(int));
     int *prev = (int *)malloc(len * sizeof(int));
+    if (!head || !prev) {
+        if (head) free(head);
+        if (prev) free(prev);
+        bs_free(&bs);
+        return NULL;
+    }
     for (int i = 0; i < HASH_SIZE; i++) head[i] = -1;
 
     size_t in_pos = 0;
@@ -303,7 +309,7 @@ LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, s
     if (ui > 0) {
         unsigned long long v = 0;
         for (int j = 0; j < ui; j++) v = v * 85 + unit[j];
-        for (int j = 0; j < 5 - ui; j++) v *= 85;
+        for (int j = 0; j < 5 - ui; j++) v = v * 85 + 84;
         for (int j = 0; j < ui - 1; j++) {
             decoded[di++] = (unsigned char)((v >> (24 - j * 8)) & 0xFF);
         }

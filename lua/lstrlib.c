@@ -1641,6 +1641,7 @@ static void shuffle_alphabet(char *alphabet, unsigned int seed) {
 static char *escape_string(const unsigned char *input, size_t len) {
     size_t out_cap = len * 4 + 1024;
     char *out = (char *)malloc(out_cap);
+    if (!out) return NULL;
     size_t opi = 0;
     for (size_t i = 0; i < len; i++) {
         unsigned char c = input[i];
@@ -1657,6 +1658,7 @@ static char *escape_string(const unsigned char *input, size_t len) {
 LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsigned int whole_crc, int total, int index) {
     size_t data_len = len + 12;
     unsigned char *data = (unsigned char *)malloc(data_len);
+    if (!data) return NULL;
     data[0] = 'C'; data[1] = 'H'; data[2] = 'Y'; data[3] = 'E';
     data[4] = (whole_crc >> 24) & 0xFF;
     data[5] = (whole_crc >> 16) & 0xFF;
@@ -1689,6 +1691,7 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
 
     size_t out_capacity = (data_len * 5) + 512;
     char *output = (char *)malloc(out_capacity);
+    if (!output) { free(data); return NULL; }
     size_t opi = 0;
 
     // Hide seed in first 8 characters
@@ -1716,15 +1719,13 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
         }
 
         int num_chars = chunk + 1;
-        for (int j = 0; j < 5; j++) {
-            if (j >= 5 - num_chars) {
-                unsigned int r_noise = xorshift128(&s_enc);
-                if (r_noise % 13 == 0) {
-                    output[opi++] = alphabet[xorshift128(&s_enc) % 85];
-                }
-                unsigned int r_data = xorshift128(&s_enc);
-                output[opi++] = alphabet[(unit[j] + (r_data % 85)) % 85];
+        for (int j = 0; j < num_chars; j++) {
+            unsigned int r_noise = xorshift128(&s_enc);
+            if (r_noise % 13 == 0) {
+                output[opi++] = alphabet[xorshift128(&s_enc) % 85];
             }
+            unsigned int r_data = xorshift128(&s_enc);
+            output[opi++] = alphabet[(unit[j] + (r_data % 85)) % 85];
         }
     }
     output[opi++] = '.';
@@ -1774,6 +1775,7 @@ LUAMOD_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t le
 
     size_t out_capacity = (len * 2) + (total * 256) + 1024;
     char *script = (char *)malloc(out_capacity);
+    if (!script) { if (compressed) free(compressed); return NULL; }
     size_t opi = 0;
 
     opi += sprintf(script + opi, "-- \xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6\n");
