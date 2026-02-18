@@ -770,6 +770,23 @@ typedef struct {
   size_t size;
 } MemState;
 
+typedef struct {
+  ZIO *z;
+  const char *s;
+  size_t size;
+} LookaheadState;
+
+static const char *getL (lua_State *L, void *ud, size_t *size) {
+  LookaheadState *ls = (LookaheadState *)ud;
+  UNUSED(L);
+  if (ls->size > 0) {
+    *size = ls->size;
+    ls->size = 0;
+    return ls->s;
+  }
+  return luaZ_fill(ls->z);
+}
+
 static const char *getM (lua_State *L, void *ud, size_t *size) {
   MemState *ms = (MemState *)ud;
   UNUSED(L);
@@ -785,11 +802,25 @@ static void f_parser (lua_State *L, void *ud) {
   int c = zgetc(p->z);  /* read first character */
 
   if (c == 0xE5) { /* UTF-8 for '初' */
-    char sig[13];
+    char sig[12];
     sig[0] = (char)c;
     int i;
-    for (i = 1; i < 12; i++) sig[i] = (char)zgetc(p->z);
-    sig[12] = '\0';
+    for (i = 1; i < 12; i++) {
+        int next = zgetc(p->z);
+        if (next == EOF) {
+            // Not enough bytes, cannot be our signature.
+            // We need to fall back.
+            ZIO lz;
+            LookaheadState ls;
+            ls.z = p->z; ls.s = sig; ls.size = i;
+            luaZ_init(L, &lz, getL, &ls);
+            checkmode(L, p->mode, "text");
+            cl = luaY_parser(L, &lz, &p->buff, &p->dyd, p->name, sig[0]);
+            goto done;
+        }
+        sig[i] = (char)next;
+    }
+
     if (memcmp(sig, "\xE5\x88\x9D\xE5\x8F\xB6\xE5\xAE\x9A\xE5\x88\xB6", 12) == 0) {
       luaL_Buffer b;
       luaL_buffinit(L, &b);
@@ -820,13 +851,16 @@ static void f_parser (lua_State *L, void *ud) {
         goto done;
       }
       lua_pop(L, 1); /* remove encoded string */
-      // If we failed to decode/decrypt, we already consumed the signature.
-      // But this is an error case for a file starting with our signature.
       luaG_runerror(L, "无法解析加密脚本");
     } else {
-        // Not our signature, but we consumed 12 bytes.
-        // In practice, this shouldn't happen for valid scripts.
-        luaG_runerror(L, "损坏的脚本签名");
+        // Not our signature, fall back.
+        ZIO lz;
+        LookaheadState ls;
+        ls.z = p->z; ls.s = sig; ls.size = 12;
+        luaZ_init(L, &lz, getL, &ls);
+        checkmode(L, p->mode, "text");
+        cl = luaY_parser(L, &lz, &p->buff, &p->dyd, p->name, sig[0]);
+        goto done;
     }
   }
 

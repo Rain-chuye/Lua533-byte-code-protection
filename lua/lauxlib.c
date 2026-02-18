@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,9 +31,9 @@ static const char B85_ALPHABET_MASTER[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZa
 
 typedef struct {
     unsigned int x, y, z, w;
-} Xorshift;
+} ChuyeXorState;
 
-static unsigned int xorshift128(Xorshift *s) {
+static unsigned int chuye_xorshift128(ChuyeXorState *s) {
     unsigned int t = s->x ^ (s->x << 11);
     s->x = s->y; s->y = s->z; s->z = s->w;
     return s->w = s->w ^ (s->w >> 19) ^ t ^ (t >> 8);
@@ -40,12 +41,12 @@ static unsigned int xorshift128(Xorshift *s) {
 
 static void shuffle_alphabet(char *alphabet, unsigned int seed) {
     seed ^= 0x12345678; /* Secret Salt */
-    Xorshift s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
     int len = (int)strlen(alphabet);
     /* Multi-pass robust shuffle */
     for (int pass = 0; pass < 3; pass++) {
         for (int i = len - 1; i > 0; i--) {
-            int j = xorshift128(&s) % (i + 1);
+            int j = chuye_xorshift128(&s) % (i + 1);
             char t = alphabet[i];
             alphabet[i] = alphabet[j];
             alphabet[j] = t;
@@ -62,9 +63,9 @@ typedef struct {
     size_t cap;
     unsigned int bit_buf;
     int bit_cnt;
-} BitStream;
+} ChuyeBitStream;
 
-static void bs_init(BitStream *bs, size_t cap) {
+static void chuye_bs_init(ChuyeBitStream *bs, size_t cap) {
     bs->data = (unsigned char *)malloc(cap);
     bs->pos = 0;
     bs->cap = cap;
@@ -72,7 +73,7 @@ static void bs_init(BitStream *bs, size_t cap) {
     bs->bit_cnt = 0;
 }
 
-static void bs_write(BitStream *bs, unsigned int val, int bits) {
+static void chuye_bs_write(ChuyeBitStream *bs, unsigned int val, int bits) {
     bs->bit_buf |= (val << bs->bit_cnt);
     bs->bit_cnt += bits;
     while (bs->bit_cnt >= 8) {
@@ -86,7 +87,7 @@ static void bs_write(BitStream *bs, unsigned int val, int bits) {
     }
 }
 
-static void bs_flush(BitStream *bs) {
+static void chuye_bs_flush(ChuyeBitStream *bs) {
     if (bs->bit_cnt > 0) {
         if (bs->pos >= bs->cap) {
             bs->cap *= 2;
@@ -96,7 +97,11 @@ static void bs_flush(BitStream *bs) {
     }
 }
 
-static unsigned int bs_read(BitStream *bs, int bits, const unsigned char *input, size_t len) {
+static void chuye_bs_free(ChuyeBitStream *bs) {
+    if (bs->data) free(bs->data);
+}
+
+static unsigned int chuye_bs_read(ChuyeBitStream *bs, int bits, const unsigned char *input, size_t len) {
     while (bs->bit_cnt < bits) {
         unsigned int b = (bs->pos < len) ? input[bs->pos++] : 0;
         bs->bit_buf |= (b << bs->bit_cnt);
@@ -117,15 +122,15 @@ static unsigned int hash3(const unsigned char *p) {
 
 LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, size_t *out_len) {
     if (len == 0) { *out_len = 0; return NULL; }
-    BitStream bs;
-    bs_init(&bs, len + 64);
+    ChuyeBitStream bs;
+    chuye_bs_init(&bs, len + 64);
 
     size_t temp_len = len;
     do {
         unsigned char b = temp_len & 0x7F;
         temp_len >>= 7;
         if (temp_len > 0) b |= 0x80;
-        bs_write(&bs, b, 8);
+        chuye_bs_write(&bs, b, 8);
     } while (temp_len > 0);
 
     int *head = (int *)malloc(HASH_SIZE * sizeof(int));
@@ -133,7 +138,7 @@ LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, 
     if (!head || !prev) {
         if (head) free(head);
         if (prev) free(prev);
-        bs_free(&bs);
+        chuye_bs_free(&bs);
         return NULL;
     }
     for (int i = 0; i < HASH_SIZE; i++) head[i] = -1;
@@ -163,15 +168,15 @@ LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, 
         }
 
         if (best_len >= 3) {
-            bs_write(&bs, 1, 1);
+            chuye_bs_write(&bs, 1, 1);
             if (best_len <= 10) {
-                bs_write(&bs, 0, 1);
-                bs_write(&bs, best_len - 3, 3);
+                chuye_bs_write(&bs, 0, 1);
+                chuye_bs_write(&bs, best_len - 3, 3);
             } else {
-                bs_write(&bs, 1, 1);
-                bs_write(&bs, best_len - 11, 8);
+                chuye_bs_write(&bs, 1, 1);
+                chuye_bs_write(&bs, best_len - 11, 8);
             }
-            bs_write(&bs, best_off - 1, 15);
+            chuye_bs_write(&bs, best_off - 1, 15);
             for (int k = 0; k < best_len; k++) {
                 if (in_pos + 3 <= len) {
                     unsigned int h = hash3(input + in_pos);
@@ -181,8 +186,8 @@ LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, 
                 in_pos++;
             }
         } else {
-            bs_write(&bs, 0, 1);
-            bs_write(&bs, input[in_pos], 8);
+            chuye_bs_write(&bs, 0, 1);
+            chuye_bs_write(&bs, input[in_pos], 8);
             if (in_pos + 3 <= len) {
                 unsigned int h = hash3(input + in_pos);
                 prev[in_pos] = head[h];
@@ -192,14 +197,14 @@ LUALIB_API unsigned char *luaL_compress(const unsigned char *input, size_t len, 
         }
     }
     free(head); free(prev);
-    bs_flush(&bs);
+    chuye_bs_flush(&bs);
     *out_len = bs.pos;
     return bs.data;
 }
 
 LUALIB_API unsigned char *luaL_decompress(const unsigned char *input, size_t len, size_t *out_len) {
     if (len == 0) { *out_len = 0; return NULL; }
-    BitStream bs;
+    ChuyeBitStream bs;
     bs.pos = 0;
     bs.bit_buf = 0;
     bs.bit_cnt = 0;
@@ -218,20 +223,20 @@ LUALIB_API unsigned char *luaL_decompress(const unsigned char *input, size_t len
     size_t out_pos = 0;
 
     while (out_pos < orig_len) {
-        if (bs_read(&bs, 1, input, len)) {
+        if (chuye_bs_read(&bs, 1, input, len)) {
             int match_len;
-            if (bs_read(&bs, 1, input, len) == 0)
-                match_len = bs_read(&bs, 3, input, len) + 3;
+            if (chuye_bs_read(&bs, 1, input, len) == 0)
+                match_len = chuye_bs_read(&bs, 3, input, len) + 3;
             else
-                match_len = bs_read(&bs, 8, input, len) + 11;
-            int off = bs_read(&bs, 15, input, len) + 1;
+                match_len = chuye_bs_read(&bs, 8, input, len) + 11;
+            int off = chuye_bs_read(&bs, 15, input, len) + 1;
             if (off > (int)out_pos) { free(output); return NULL; }
             for (int i = 0; i < match_len; i++) {
                 output[out_pos] = output[out_pos - off];
                 out_pos++;
             }
         } else {
-            output[out_pos++] = (unsigned char)bs_read(&bs, 8, input, len);
+            output[out_pos++] = (unsigned char)chuye_bs_read(&bs, 8, input, len);
         }
     }
     *out_len = out_pos;
@@ -268,7 +273,7 @@ static unsigned int recover_seed(const char *in) {
 LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, size_t *out_len) {
     if (in_len < 8) return NULL;
     unsigned int seed = recover_seed(input);
-    Xorshift s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
 
     char alphabet[86];
     memcpy(alphabet, B85_ALPHABET_MASTER, 85);
@@ -283,14 +288,14 @@ LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, s
 
     size_t in_pos = 8;
     while (in_pos < in_len) {
-        unsigned int r_noise = xorshift128(&s);
+        unsigned int r_noise = chuye_xorshift128(&s);
         if (r_noise % 13 == 0) {
-            xorshift128(&s); // Skip noise value state
+            chuye_xorshift128(&s); // Skip noise value state
             in_pos++;
             if (in_pos >= in_len) break;
         }
         if (input[in_pos] == '.') break;
-        unsigned int r_data = xorshift128(&s);
+        unsigned int r_data = chuye_xorshift128(&s);
         int val = b85_value(alphabet, input[in_pos++]);
         if (val == -1) continue;
 
@@ -316,9 +321,9 @@ LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, s
     }
 
     // Stateful Stream Decryption
-    Xorshift s2 = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s2 = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
     for (size_t i = 0; i < di; i++) {
-        unsigned int r = xorshift128(&s2);
+        unsigned int r = chuye_xorshift128(&s2);
         int rot = (r >> 8) & 7;
         unsigned char b = decoded[i];
         b = (unsigned char)((b >> rot) | (b << (8 - rot)));
@@ -362,7 +367,7 @@ LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char
     memset(decoded, 0, decoded_len);
     free(decoded);
 
-    // Outer Decryption removed as it's now handled in luaL_decrypt_chuye with Xorshift
+    // Outer Decryption removed as it's now handled in luaL_decrypt_chuye with ChuyeXorState
 
     *outlen = data_len;
     return data;

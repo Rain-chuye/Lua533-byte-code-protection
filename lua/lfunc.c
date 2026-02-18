@@ -172,14 +172,19 @@ Proto *luaF_newproto (lua_State *L) {
 
 
 void luaF_freeproto (lua_State *L, Proto *f) {
+  if (f->op_map) memset(f->op_map, 0, NUM_OPCODES);
   luaM_freearray(L, f->op_map, NUM_OPCODES);
+  if (f->code) memset(f->code, 0, f->sizecode * sizeof(Instruction));
   luaM_freearray(L, f->code, f->sizecode);
+  if (f->vcode) memset(f->vcode, 0, f->sizevcode * sizeof(Instruction));
   luaM_freearray(L, f->vcode, f->sizevcode);
   luaM_freearray(L, f->p, f->sizep);
+  if (f->k) memset(f->k, 0, f->sizek * sizeof(TValue));
   luaM_freearray(L, f->k, f->sizek);
   luaM_freearray(L, f->lineinfo, f->sizelineinfo);
   luaM_freearray(L, f->locvars, f->sizelocvars);
   luaM_freearray(L, f->upvalues, f->sizeupvalues);
+  memset(f, 0, sizeof(Proto));
   luaM_free(L, f);
 }
 

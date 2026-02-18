@@ -337,6 +337,20 @@ static int load_aux (lua_State *L, int status, int envidx) {
   if (status == LUA_OK) {
     if (envidx != 0) {  /* 'env' parameter? */
       lua_pushvalue(L, envidx);  /* environment for loaded function */
+      /* Inject stable internal identifier into custom environment to ensure
+         chunked loading works even in restricted or modified environments. */
+      if (lua_istable(L, -1)) {
+        lua_getglobal(L, "\1LuaVMP");
+        if (lua_isnil(L, -1)) {
+          lua_pop(L, 1);
+          lua_getglobal(L, "load"); /* Fallback to standard load if alias not yet set */
+        }
+        if (!lua_isnil(L, -1)) {
+          lua_setfield(L, -2, "\1LuaVMP");
+        } else {
+          lua_pop(L, 1);
+        }
+      }
       if (!lua_setupvalue(L, -2, 1))  /* set it as 1st upvalue */
         lua_pop(L, 1);  /* remove 'env' if not used by previous call */
     }

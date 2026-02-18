@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1613,9 +1614,9 @@ static const char B85_ALPHABET_MASTER[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZa
 
 typedef struct {
     unsigned int x, y, z, w;
-} Xorshift;
+} ChuyeXorState;
 
-static unsigned int xorshift128(Xorshift *s) {
+static unsigned int chuye_xorshift128(ChuyeXorState *s) {
     unsigned int t = s->x ^ (s->x << 11);
     s->x = s->y; s->y = s->z; s->z = s->w;
     return s->w = s->w ^ (s->w >> 19) ^ t ^ (t >> 8);
@@ -1623,12 +1624,12 @@ static unsigned int xorshift128(Xorshift *s) {
 
 static void shuffle_alphabet(char *alphabet, unsigned int seed) {
     seed ^= 0x12345678; /* Secret Salt */
-    Xorshift s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
     int len = (int)strlen(alphabet);
     /* Multi-pass robust shuffle */
     for (int pass = 0; pass < 3; pass++) {
         for (int i = len - 1; i > 0; i--) {
-            int j = xorshift128(&s) % (i + 1);
+            int j = chuye_xorshift128(&s) % (i + 1);
             char t = alphabet[i];
             alphabet[i] = alphabet[j];
             alphabet[j] = t;
@@ -1675,9 +1676,9 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
     unsigned int seed = global_seed = (global_seed * 1103515245 + 12345) & 0x7fffffff;
 
     // Stateful Stream Encryption
-    Xorshift s_cry = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s_cry = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
     for (size_t i = 0; i < data_len; i++) {
-        unsigned int r = xorshift128(&s_cry);
+        unsigned int r = chuye_xorshift128(&s_cry);
         unsigned char b = data[i];
         b ^= (unsigned char)(r & 0xFF);
         int rot = (r >> 8) & 7;
@@ -1701,7 +1702,7 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
         output[opi++] = B85_ALPHABET_MASTER[bits | noise];
     }
 
-    Xorshift s_enc = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
+    ChuyeXorState s_enc = {seed, seed ^ 0x92D68CA2, seed ^ 0x475EAD11, seed ^ 0x6E0323B9};
 
     for (size_t i = 0; i < data_len; i += 4) {
         unsigned int val = 0;
@@ -1720,11 +1721,11 @@ LUAMOD_API char *luaL_encrypt_chuye(const unsigned char *input, size_t len, unsi
 
         int num_chars = chunk + 1;
         for (int j = 0; j < num_chars; j++) {
-            unsigned int r_noise = xorshift128(&s_enc);
+            unsigned int r_noise = chuye_xorshift128(&s_enc);
             if (r_noise % 13 == 0) {
-                output[opi++] = alphabet[xorshift128(&s_enc) % 85];
+                output[opi++] = alphabet[chuye_xorshift128(&s_enc) % 85];
             }
-            unsigned int r_data = xorshift128(&s_enc);
+            unsigned int r_data = chuye_xorshift128(&s_enc);
             output[opi++] = alphabet[(unit[j] + (r_data % 85)) % 85];
         }
     }
