@@ -90,9 +90,12 @@ LUALIB_API const char *(luaL_gsub) (lua_State *L, const char *s, const char *p,
 
 LUALIB_API void (luaL_setfuncs) (lua_State *L, const luaL_Reg *l, int nup);
 
-LUALIB_API unsigned int luaL_crc32(const unsigned char *s, size_t len);
-LUALIB_API unsigned char *luaL_decrypt_chuye(const char *input, size_t in_len, size_t *out_len);
-LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char *src, size_t len, size_t *outlen);
+LUALIB_API unsigned int (luaL_crc32) (const unsigned char *data, size_t len);
+LUALIB_API unsigned char *(luaL_compress)(const unsigned char *input, size_t len, size_t *out_len);
+LUALIB_API unsigned char *(luaL_decompress)(const unsigned char *input, size_t len, size_t *out_len);
+LUALIB_API unsigned char *(luaL_decrypt_chuye) (const char *input, size_t len, size_t *out_len);
+LUALIB_API unsigned char *(luaL_chuye_decode_and_decrypt) (lua_State *L, const char *src, size_t len, size_t *outlen);
+LUALIB_API char *luaL_encrypt_chuye_script(const unsigned char *input, size_t len);
 
 LUALIB_API int (luaL_getsubtable) (lua_State *L, int idx, const char *fname);
 
@@ -101,12 +104,6 @@ LUALIB_API void (luaL_traceback) (lua_State *L, lua_State *L1,
 
 LUALIB_API void (luaL_requiref) (lua_State *L, const char *modname,
                                  lua_CFunction openf, int glb);
-
-LUALIB_API unsigned int (luaL_crc32) (const unsigned char *data, size_t len);
-LUALIB_API unsigned char *(luaL_compress)(const unsigned char *input, size_t len, size_t *out_len);
-LUALIB_API unsigned char *(luaL_decompress)(const unsigned char *input, size_t len, size_t *out_len);
-LUALIB_API unsigned char *(luaL_decrypt_chuye) (const char *input, size_t len, size_t *out_len);
-LUALIB_API unsigned char *(luaL_chuye_decode_and_decrypt) (lua_State *L, const char *src, size_t len, size_t *outlen);
 
 /*
 ** ===============================================================

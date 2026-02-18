@@ -784,7 +784,13 @@ static const char *getL (lua_State *L, void *ud, size_t *size) {
     ls->size = 0;
     return ls->s;
   }
-  return luaZ_fill(ls->z);
+  if (ls->z->n > 0) {
+    *size = ls->z->n;
+    const char *res = ls->z->p;
+    ls->z->n = 0;
+    return res;
+  }
+  return ls->z->reader(L, ls->z->data, size);
 }
 
 static const char *getM (lua_State *L, void *ud, size_t *size) {
