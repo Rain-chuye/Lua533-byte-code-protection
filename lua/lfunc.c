@@ -14,6 +14,8 @@
 
 #include "lua.h"
 
+#include <string.h>
+
 #include "lfunc.h"
 #include "lgc.h"
 #include "lmem.h"

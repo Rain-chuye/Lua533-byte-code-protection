@@ -96,13 +96,21 @@ static int size (lua_State *L) {
 
 static int clear (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  lua_pushnil(L);  /* first key */
-  while (lua_next(L, 1)) {
-    lua_pop(L, 1);  /* remove value */
-    lua_pushvalue(L,-1);
-    lua_pushnil(L);
-    lua_settable(L,-4);
-   }
+  Table *t = (Table *)lua_topointer(L, 1);
+  unsigned int i;
+  for (i = 0; i < t->sizearray; i++) setnilvalue(&t->array[i]);
+  int s = sizenode(t);
+  if (t->lastfree != t->node) {
+    for (i = 0; i < (unsigned int)s; i++) {
+      Node *n = gnode(t, i);
+      setnilvalue(gval(n));
+      if (!ttisnil(gkey(n))) {
+        setdeadvalue(wgkey(n));
+      }
+    }
+    t->lastfree = gnode(t, s);
+  }
+  invalidateTMcache(t);
   return 0;
 }
 
@@ -285,7 +293,6 @@ static int tmove (lua_State *L) {
       if (f > 0 && e <= src->sizearray && t > 0 && t + n - 1 <= dst->sizearray) {
         memmove(&dst->array[t - 1], &src->array[f - 1], (size_t)n * sizeof(TValue));
         if (src != dst) {
-          /* barrier might be needed if moving between different tables */
           for (i = 0; i < n; i++) {
             luaC_barrierback(L, dst, &dst->array[t - 1 + i]);
           }
@@ -625,7 +632,6 @@ static const luaL_Reg tab_funcs[] = {
 #if defined(LUA_COMPAT_MAXN)
   {"maxn", maxn},
   {"size", size},
-  {"clear", clear},
   {"find", find},
   {"gfind", gfind},
   {"clone", clone},
@@ -633,6 +639,7 @@ static const luaL_Reg tab_funcs[] = {
   {"create", tcreate},
   {"new", tcreate},
 #endif
+  {"clear", clear},
   {"insert", tinsert},
   {"pack", pack},
   {"unpack", unpack},

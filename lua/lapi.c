@@ -1141,6 +1141,17 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
       res = g->gcrunning;
       break;
     }
+    case 10: { /* LUA_GCGEN */
+      if (g->gckind != KGC_GEN) {
+        luaC_fullgc(L, 0);
+        g->gckind = KGC_GEN;
+      }
+      break;
+    }
+    case 11: { /* LUA_GCINC */
+      g->gckind = KGC_INC;
+      break;
+    }
     default: res = -1;  /* invalid option */
   }
   lua_unlock(L);

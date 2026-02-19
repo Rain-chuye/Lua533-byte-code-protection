@@ -51,8 +51,9 @@ struct lua_longjmp;  /* defined in ldo.c */
 
 
 /* kinds of Garbage Collection */
-#define KGC_NORMAL	0
-#define KGC_EMERGENCY	1	/* gc was forced by an allocation failure */
+#define KGC_INC		0	/* incremental mode */
+#define KGC_GEN		1	/* generational mode */
+#define KGC_EMERGENCY	2	/* gc was forced by an allocation failure */
 
 
 typedef struct stringtable {
@@ -143,6 +144,10 @@ typedef struct global_State {
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
   int gcpause;  /* size of pause between successive GCs */
   int gcstepmul;  /* GC 'granularity' */
+  int genminormul;
+  int genmajormul;
+  int gcstopem;
+  l_mem lastatomic;
   lua_CFunction panic;  /* to be called in unprotected errors */
   struct lua_State *mainthread;
   const lua_Number *version;  /* pointer to version number */

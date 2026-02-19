@@ -69,8 +69,6 @@ LUALIB_API int (luaL_execresult) (lua_State *L, int stat);
 #define LUA_NOREF       (-2)
 #define LUA_REFNIL      (-1)
 
-#define luaL_pushfail(L)	lua_pushnil(L)
-
 LUALIB_API int (luaL_ref) (lua_State *L, int t);
 LUALIB_API void (luaL_unref) (lua_State *L, int t, int ref);
 

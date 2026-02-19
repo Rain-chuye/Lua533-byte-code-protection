@@ -933,92 +933,29 @@ void luaV_execute (lua_State *L) {
         vmbreak;
       }
       vmcase(OP_GETTABUP) {
-        const TValue *upval = cl->upvals[GETARG_B(i)]->v;
-        const TValue *rc = RKC(i);
-        if (ttistable(upval)) {
-          Table *t = hvalue(upval);
-          if (ttisshrstring(rc)) {
-            TValue *slot = cast(TValue *, luaH_getshortstr(t, tsvalue(rc)));
-            if (!ttisnil(slot)) {
-              setobj2s(L, ra, slot);
-              vmbreak;
-            }
-          }
-          else if (ttisinteger(rc)) {
-            lua_Integer idx = ivalue(rc);
-            if (l_castS2U(idx) - 1 < t->sizearray) {
-              setobj2s(L, ra, &t->array[idx - 1]);
-              vmbreak;
-            }
-          }
-        }
+        TValue *upval = cl->upvals[GETARG_B(i)]->v;
+        TValue *rc = RKC(i);
         gettableProtected(L, upval, rc, ra);
         vmbreak;
       }
       vmcase(OP_GETTABLE) {
         StkId rb = RB(i);
-        const TValue *rc = RKC(i);
-        if (ttistable(rb)) {
-          Table *t = hvalue(rb);
-          if (ttisinteger(rc)) {
+        TValue *rc = RKC(i);
+        if (ttistable(rb) && ttisinteger(rc)) {
+            Table *t = hvalue(rb);
             lua_Integer idx = ivalue(rc);
-            if (l_castS2U(idx) - 1 < t->sizearray) {
-              setobj2s(L, ra, &t->array[idx - 1]);
-              vmbreak;
+            if (idx > 0 && idx <= t->sizearray) {
+                setobj2s(L, ra, &t->array[idx - 1]);
+                vmbreak;
             }
-          }
-          else if (ttisshrstring(rc)) {
-            TValue *slot = cast(TValue *, luaH_getshortstr(t, tsvalue(rc)));
-            if (!ttisnil(slot)) {
-              setobj2s(L, ra, slot);
-              vmbreak;
-            }
-          }
         }
         gettableProtected(L, rb, rc, ra);
         vmbreak;
       }
       vmcase(OP_SETTABUP) {
         TValue *upval = cl->upvals[GETARG_A(i)]->v;
-        const TValue *rb = RKB(i);
-        const TValue *rc = RKC(i);
-        if(ttistable(upval)) {
-            Table *t = hvalue(upval);
-            switch (t->type) {
-                case 1:
-                    if (!ttisinteger(rb))
-                        luaG_runerror(L, "数组键必须是整数");
-                    break;
-                case 2:
-                    luaG_runerror(L, "常量表不能被修改");
-                    break;
-                case 3:
-                    luaG_runerror(L, "数组键必须是整数");
-                    break;
-            }
-            if (t->metatable == NULL) {
-              const TValue *slot = NULL;
-              if (ttisshrstring(rb)) slot = luaH_getshortstr(t, tsvalue(rb));
-              else if (ttisinteger(rb)) slot = luaH_getint(t, ivalue(rb));
-              if (slot != NULL && slot != luaO_nilobject) {
-                setobj2t(L, cast(TValue *, slot), rc);
-                luaC_barrierback(L, t, rc);
-                vmbreak;
-              }
-            }
-        }
-        settableProtected(L, upval, rb, rc);
-        vmbreak;
-      }
-      vmcase(OP_SETUPVAL) {
-        UpVal *uv = cl->upvals[GETARG_B(i)];
-        setobj(L, uv->v, ra);
-        luaC_upvalbarrier(L, uv);
-        vmbreak;
-      }
-      vmcase(OP_SETTABLE) {
-        const TValue *rb = RKB(i);
-        const TValue *rc = RKC(i);
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
         if(ttistable(ra)) {
             Table *t = hvalue(ra);
             switch (t->type) {
@@ -1033,15 +970,32 @@ void luaV_execute (lua_State *L) {
                     luaG_runerror(L, "数组键必须是整数");
                     break;
             }
-            if (t->metatable == NULL) {
-              const TValue *slot = NULL;
-              if (ttisshrstring(rb)) slot = luaH_getshortstr(t, tsvalue(rb));
-              else if (ttisinteger(rb)) slot = luaH_getint(t, ivalue(rb));
-              if (slot != NULL && slot != luaO_nilobject) {
-                setobj2t(L, cast(TValue *, slot), rc);
-                luaC_barrierback(L, t, rc);
-                vmbreak;
-              }
+        }
+        settableProtected(L, upval, rb, rc);
+        vmbreak;
+      }
+      vmcase(OP_SETUPVAL) {
+        UpVal *uv = cl->upvals[GETARG_B(i)];
+        setobj(L, uv->v, ra);
+        luaC_upvalbarrier(L, uv);
+        vmbreak;
+      }
+      vmcase(OP_SETTABLE) {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        if(ttistable(ra)) {
+            Table *t = hvalue(ra);
+            switch (t->type) {
+                case 1:
+                    if (!ttisinteger(rb))
+                        luaG_runerror(L, "数组键必须是整数");
+                    break;
+                case 2:
+                    luaG_runerror(L, "常量表不能被修改");
+                    break;
+                case 3:
+                    luaG_runerror(L, "数组键必须是整数");
+                    break;
             }
         }
         settableProtected(L, ra, rb, rc);
@@ -1450,18 +1404,6 @@ void luaV_execute (lua_State *L) {
               lua_Integer res;
               if (luaV_tointeger(arg, &res, 2)) { setivalue(ra, res); }
               else { setfltvalue(ra, l_mathop(ceil)(fltvalue(arg))); }
-              goto l_call_fast_done;
-            }
-          } else if (f == G(L)->math_sin) {
-            lua_Number n;
-            if (tonumber(ra + 1, &n)) {
-              setfltvalue(ra, l_mathop(sin)(n));
-              goto l_call_fast_done;
-            }
-          } else if (f == G(L)->math_cos) {
-            lua_Number n;
-            if (tonumber(ra + 1, &n)) {
-              setfltvalue(ra, l_mathop(cos)(n));
               goto l_call_fast_done;
             }
           }

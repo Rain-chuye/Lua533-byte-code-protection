@@ -128,29 +128,29 @@ static int str_rep (lua_State *L) {
   lua_Integer n = luaL_checkinteger(L, 2);
   const char *sep = luaL_optlstring(L, 3, "", &lsep);
   if (n <= 0) lua_pushliteral(L, "");
-  else if (l + lsep < l || (n > 0 && l + lsep > MAXSIZE / n))  /* may overflow? */
+  else if (l + lsep < l || (lsep > 0 && (size_t)n > MAXSIZE / (l + lsep)) || (lsep == 0 && (size_t)n > MAXSIZE / l))
     return luaL_error(L, "生成的字符串太大");
   else {
     size_t totallen = (size_t)n * l + (size_t)(n - 1) * lsep;
     luaL_Buffer b;
     char *p = luaL_buffinitsize(L, &b, totallen);
-    if (lsep == 0) {
-      if (l > 0) {
-        memcpy(p, s, l);
-        size_t done = l;
-        while (done < totallen) {
-          size_t copy = (done <= totallen - done) ? done : totallen - done;
-          memcpy(p + done, p, copy);
-          done += copy;
+    if (l > 0) {
+        if (lsep == 0) {
+            memcpy(p, s, l);
+            for (size_t i = l; i < totallen; i <<= 1) {
+                size_t copy_size = (i <= totallen - i) ? i : totallen - i;
+                memcpy(p + i, p, copy_size);
+            }
+        } else {
+            size_t unit_len = l + lsep;
+            memcpy(p, s, l);
+            memcpy(p + l, sep, lsep);
+            for (size_t i = unit_len; i < totallen - l; i <<= 1) {
+                size_t copy_size = (i <= totallen - l - i) ? i : totallen - l - i;
+                memcpy(p + i, p, copy_size);
+            }
+            if (n > 0) memcpy(p + totallen - l, s, l);
         }
-      }
-    }
-    else {
-      for (; n > 1; n--) {
-        memcpy(p, s, l); p += l;
-        memcpy(p, sep, lsep); p += lsep;
-      }
-      memcpy(p, s, l);
     }
     luaL_pushresultsize(&b, totallen);
   }

@@ -79,7 +79,8 @@
 #define WHITE1BIT	1  /* object is white (type 1) */
 #define BLACKBIT	2  /* object is black */
 #define FINALIZEDBIT	3  /* object has been marked for finalization */
-/* bit 7 is currently used by tests (luaL_checkmemory) */
+/* bits 4-5 are used for age (generational GC) */
+#define AGEBITS		4
 
 #define WHITEBITS	bit2mask(WHITE0BIT, WHITE1BIT)
 
@@ -90,6 +91,14 @@
 	(!testbits((x)->marked, WHITEBITS | bitmask(BLACKBIT)))
 
 #define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
+
+#define getage(o)	(((o)->marked >> AGEBITS) & 3)
+#define setage(o,a)	((o)->marked = cast_byte(((o)->marked & ~(3 << AGEBITS)) | ((a) << AGEBITS)))
+#define isold(o)	(getage(o) == G_OLD)
+
+#define G_NEW		0	/* created in current cycle */
+#define G_SURVIVAL	1	/* created in previous cycle */
+#define G_OLD		2	/* stable old object */
 
 #define otherwhite(g)	((g)->currentwhite ^ WHITEBITS)
 #define isdeadm(ow,m)	(!(((m) ^ WHITEBITS) & (ow)))
@@ -121,7 +130,7 @@
 
 #define luaC_barrierback(L,p,v) (  \
 	(iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ? \
-	luaC_barrierback_(L,p) : cast_void(0))
+	luaC_barrierback_(L,obj2gco(p)) : cast_void(0))
 
 #define luaC_objbarrier(L,p,o) (  \
 	(isblack(p) && iswhite(o)) ? \
@@ -138,7 +147,7 @@ LUAI_FUNC void luaC_runtilstate (lua_State *L, int statesmask);
 LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
 LUAI_FUNC GCObject *luaC_newobj (lua_State *L, int tt, size_t sz);
 LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
-LUAI_FUNC void luaC_barrierback_ (lua_State *L, Table *o);
+LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 LUAI_FUNC void luaC_upvalbarrier_ (lua_State *L, UpVal *uv);
 LUAI_FUNC void luaC_checkfinalizer (lua_State *L, GCObject *o, Table *mt);
 LUAI_FUNC void luaC_upvdeccount (lua_State *L, UpVal *uv);

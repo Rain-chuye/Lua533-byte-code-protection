@@ -93,6 +93,15 @@
 
 static void reallymarkobject (global_State *g, GCObject *o);
 
+static GCObject **getgclist (GCObject *o) {
+  switch (novariant(o->tt)) {
+    case LUA_TTABLE: return &gco2t(o)->gclist;
+    case LUA_TFUNCTION: return &gco2lcl(o)->gclist;
+    case LUA_TPROTO: return &gco2p(o)->gclist;
+    case LUA_TTHREAD: return &gco2th(o)->gclist;
+    default: return NULL;
+  }
+}
 
 /*
 ** {======================================================
@@ -155,8 +164,12 @@ static int iscleared (global_State *g, const TValue *o) {
 void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
   global_State *g = G(L);
   lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
-  if (keepinvariant(g))  /* must keep invariant? */
+  if (g->gckind == KGC_GEN) {
+    luaC_barrierback_(L, o);
+  }
+  else if (keepinvariant(g)) {  /* must keep invariant? */
     reallymarkobject(g, v);  /* restore invariant */
+  }
   else {  /* sweep phase */
     lua_assert(issweepphase(g));
     makewhite(g, o);  /* mark main obj. as white to avoid other barriers */
@@ -168,11 +181,15 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 ** barrier that moves collector backward, that is, mark the black object
 ** pointing to a white object as gray again.
 */
-void luaC_barrierback_ (lua_State *L, Table *t) {
+void luaC_barrierback_ (lua_State *L, GCObject *o) {
   global_State *g = G(L);
-  lua_assert(isblack(t) && !isdead(g, t));
-  black2gray(t);  /* make table gray (again) */
-  linkgclist(t, g->grayagain);
+  GCObject **list = getgclist(o);
+  lua_assert(isblack(o) && !isdead(g, o));
+  black2gray(o);  /* make object gray (again) */
+  if (list) {
+    *list = g->grayagain;
+    g->grayagain = o;
+  }
 }
 
 
@@ -186,7 +203,9 @@ void luaC_upvalbarrier_ (lua_State *L, UpVal *uv) {
   global_State *g = G(L);
   GCObject *o = gcvalue(uv->v);
   lua_assert(!upisopen(uv));  /* ensured by macro luaC_upvalbarrier */
-  if (keepinvariant(g))
+  if (g->gckind == KGC_GEN)
+    reallymarkobject(g, o);
+  else if (keepinvariant(g))
     markobject(g, o);
 }
 
@@ -212,6 +231,7 @@ GCObject *luaC_newobj (lua_State *L, int tt, size_t sz) {
   o->tt = tt;
   o->next = g->allgc;
   g->allgc = o;
+  setage(o, G_NEW);
   return o;
 }
 
@@ -234,6 +254,7 @@ GCObject *luaC_newobj (lua_State *L, int tt, size_t sz) {
 */
 static void reallymarkobject (global_State *g, GCObject *o) {
  reentry:
+  if (!iswhite(o) && !(g->gcstopem && isblack(o))) return;
   white2gray(o);
   switch (o->tt) {
     case LUA_TSHRSTR: {
@@ -535,7 +556,7 @@ static lu_mem traversethread (global_State *g, lua_State *th) {
              th->openupval == NULL || isintwups(th));
   for (; o < th->top; o++)  /* mark live elements in the stack */
     markvalue(g, o);
-  if (g->gcstate == GCSinsideatomic) {  /* final traversal? */
+  if (g->gcstate == GCSinsideatomic && !g->gcstopem) {  /* final traversal? */
     StkId lim = th->stack + th->stacksize;  /* real end of stack */
     for (; o < lim; o++)  /* clear not-marked stack slice */
       setnilvalue(o);
@@ -545,8 +566,8 @@ static lu_mem traversethread (global_State *g, lua_State *th) {
       g->twups = th;
     }
   }
-  else if (g->gckind != KGC_EMERGENCY)
-    luaD_shrinkstack(th); /* do not change stack in emergency cycle */
+  else if (g->gckind != KGC_EMERGENCY && g->gckind != KGC_GEN)
+    luaD_shrinkstack(th); /* do not change stack in emergency or generational minor cycle */
   return (sizeof(lua_State) + sizeof(TValue) * th->stacksize +
           sizeof(CallInfo) * th->nci);
 }
@@ -970,7 +991,7 @@ void luaC_freeallobjects (lua_State *L) {
   callallpendingfinalizers(L);
   lua_assert(g->tobefnz == NULL);
   g->currentwhite = WHITEBITS; /* this "white" makes all objects look dead */
-  g->gckind = KGC_NORMAL;
+  g->gckind = KGC_INC;
   sweepwholelist(L, &g->finobj);
   sweepwholelist(L, &g->allgc);
   sweepwholelist(L, &g->fixedgc);  /* collect fixed objects */
@@ -1020,8 +1041,83 @@ static l_mem atomic (lua_State *L) {
   clearvalues(g, g->allweak, origall);
   luaS_clearcache(g);
   g->currentwhite = cast_byte(otherwhite(g));  /* flip current white */
+  if (g->gckind == KGC_GEN) {
+    GCObject *curr;
+    for (curr = g->allgc; curr != NULL; curr = curr->next)
+      setage(curr, G_OLD);
+  }
   work += g->GCmemtrav;  /* complete counting */
   return work;  /* estimate of memory marked by 'atomic' */
+}
+
+static void youngcollection (lua_State *L, global_State *g) {
+  GCObject **p = &g->allgc;
+  GCObject *curr, *ga;
+  g->gcstate = GCSpropagate;
+  g->gcstopem = 1;
+  g->weak = g->allweak = g->ephemeron = NULL;
+  g->gray = g->grayagain = NULL;
+
+  /* 1. Mark roots. Force them to be marked even if black. */
+  #define forcegray(o) { if (o) { (o)->marked &= cast_byte(~bitmask(BLACKBIT)); (o)->marked |= luaC_white(g); reallymarkobject(g, o); } }
+
+  forcegray(obj2gco(g->mainthread));
+  forcegray(obj2gco(hvalue(&g->l_registry)));
+  for (int i=0; i < LUA_NUMTAGS; i++) {
+    if (g->mt[i]) forcegray(obj2gco(g->mt[i]));
+  }
+  for (curr = g->finobj; curr != NULL; curr = curr->next)
+    forcegray(curr);
+  #undef forcegray
+
+  markbeingfnz(g);
+  remarkupvals(g);
+
+  /* 2. Move grayagain to gray */
+  ga = g->grayagain;
+  g->grayagain = NULL;
+  while (ga) {
+    GCObject *next = *getgclist(ga);
+    *getgclist(ga) = g->gray;
+    g->gray = ga;
+    ga = next;
+  }
+
+  propagateall(g);
+  convergeephemerons(g);
+
+  clearvalues(g, g->weak, NULL);
+  clearvalues(g, g->allweak, NULL);
+
+  /* 3. Sweep young objects. */
+  while ((curr = *p) != NULL) {
+    if (isold(curr)) {
+      p = &curr->next;
+      continue;
+    }
+    if (iswhite(curr)) {
+      *p = curr->next;
+      freeobj(L, curr);
+    }
+    else {
+      if (getage(curr) < G_OLD) setage(curr, getage(curr) + 1);
+      if (getage(curr) == G_OLD) {
+        gray2black(curr); /* Promoted! Make it black */
+      }
+      else {
+        makewhite(g, curr); /* Reset to white for next cycle */
+      }
+      p = &curr->next;
+    }
+  }
+
+  clearkeys(g, g->ephemeron, NULL);
+  clearkeys(g, g->allweak, NULL);
+
+  g->gcstopem = 0;
+  g->gcstate = GCSpause;
+  g->GCestimate = gettotalbytes(g);
+  luaE_setdebt(g, -(cast(l_mem, (g->GCestimate / 100) * g->genminormul)));
 }
 
 
@@ -1125,13 +1221,20 @@ static l_mem getdebt (global_State *g) {
 /*
 ** performs a basic GC step when collector is running
 */
+static void youngcollection (lua_State *L, global_State *g);
+
 void luaC_step (lua_State *L) {
   global_State *g = G(L);
-  l_mem debt = getdebt(g);  /* GC deficit (be paid now) */
   if (!g->gcrunning) {  /* not running? */
     luaE_setdebt(g, -GCSTEPSIZE * 10);  /* avoid being called too often */
     return;
   }
+  if (g->gckind == KGC_GEN && g->gcstate == GCSpause) {
+    if (g->GCdebt > 0) youngcollection(L, g);
+    else luaE_setdebt(g, g->GCdebt);
+    return;
+  }
+  l_mem debt = getdebt(g);  /* GC deficit (be paid now) */
   do {  /* repeat until pause or enough "credit" (negative debt) */
     lu_mem work = singlestep(L);  /* perform one single step */
     debt -= work;
@@ -1157,7 +1260,8 @@ void luaC_step (lua_State *L) {
 */
 void luaC_fullgc (lua_State *L, int isemergency) {
   global_State *g = G(L);
-  lua_assert(g->gckind == KGC_NORMAL);
+  int origkind = g->gckind;
+  g->gckind = KGC_INC;
   if (isemergency) g->gckind = KGC_EMERGENCY;  /* set flag */
   if (keepinvariant(g)) {  /* black objects? */
     entersweep(L); /* sweep everything to turn them back to white */
@@ -1169,7 +1273,7 @@ void luaC_fullgc (lua_State *L, int isemergency) {
   /* estimate must be correct after a full GC cycle */
   lua_assert(g->GCestimate == gettotalbytes(g));
   luaC_runtilstate(L, bitmask(GCSpause));  /* finish collection */
-  g->gckind = KGC_NORMAL;
+  g->gckind = origkind;
   setpause(g);
 }
 

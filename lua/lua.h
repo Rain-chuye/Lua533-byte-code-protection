@@ -17,9 +17,9 @@
 
 
 #define LUA_VERSION_MAJOR	"5"
-#define LUA_VERSION_MINOR	"5"
-#define LUA_VERSION_NUM		505
-#define LUA_VERSION_RELEASE	"0"
+#define LUA_VERSION_MINOR	"3"
+#define LUA_VERSION_NUM		503
+#define LUA_VERSION_RELEASE	"3"
 
 #define LUA_VERSION	"Lua " LUA_VERSION_MAJOR "." LUA_VERSION_MINOR
 #define LUA_RELEASE	LUA_VERSION "." LUA_VERSION_RELEASE
@@ -187,7 +187,7 @@ LUA_API lua_CFunction   (lua_tocfunction) (lua_State *L, int idx);
 LUA_API void	       *(lua_touserdata) (lua_State *L, int idx);
 LUA_API lua_State      *(lua_tothread) (lua_State *L, int idx);
 LUA_API const void     *(lua_topointer) (lua_State *L, int idx);
-LUA_API const void     *(lua_toluaobject) (lua_State *L, int idx);
+LUA_API const void *(lua_toluaobject) (lua_State *L, int idx);
 
 
 /*
