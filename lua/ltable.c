@@ -440,6 +440,24 @@ void luaH_free (lua_State *L, Table *t) {
 }
 
 
+void luaH_clear (Table *t) {
+  unsigned int i;
+  for (i = 0; i < t->sizearray; i++) setnilvalue(&t->array[i]);
+  if (!isdummy(t->node)) {
+    int s = sizenode(t);
+    for (i = 0; i < (unsigned int)s; i++) {
+      Node *n = gnode(t, i);
+      setnilvalue(gval(n));
+      if (!ttisnil(gkey(n))) {
+        setdeadvalue(wgkey(n));
+      }
+    }
+    t->lastfree = gnode(t, s);
+  }
+  invalidateTMcache(t);
+}
+
+
 static Node *getfreepos (Table *t) {
   while (t->lastfree > t->node) {
     t->lastfree--;

@@ -772,6 +772,11 @@
 ** without modifying the main part of the file.
 */
 
+#include <stdio.h>
+#define lua_writestringerror(s,p) \
+        (fprintf(stderr, (s), (p)), fflush(stderr))
+
+
 
 
 

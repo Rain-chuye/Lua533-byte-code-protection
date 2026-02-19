@@ -149,6 +149,14 @@ void luaE_shrinkCI (lua_State *L) {
 }
 
 
+static void default_warnf (void *ud, const char *msg, int tocont) {
+  (void)ud;
+  lua_writestringerror("%s", msg);
+  if (!tocont)
+    lua_writestringerror("%s", "\n");
+}
+
+
 static void stack_init (lua_State *L1, lua_State *L) {
   int i; CallInfo *ci;
   /* initialize stack array */
@@ -348,6 +356,8 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->gcfinnum = 0;
   g->gcpause = LUAI_GCPAUSE;
   g->gcstepmul = LUAI_GCMUL;
+  g->warnf = default_warnf;
+  g->ud_warn = L;
   g->genminormul = 100; /* Less frequent minor GC to reduce lag */
   g->genmajormul = 100;
   g->gcstopem = 0;
@@ -358,6 +368,24 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
     L = NULL;
   }
   return L;
+}
+
+
+LUA_API int lua_resetthread (lua_State *L) {
+  CallInfo *ci;
+  lua_lock(L);
+  ci = L->ci = &L->base_ci;
+  setnilvalue(L->stack);
+  ci->func = L->stack;
+  ci->top = L->stack + LUA_MINSTACK;
+  L->top = L->stack + 1;
+  luaF_close(L, L->stack);
+  L->status = LUA_OK;
+  L->nCcalls = 0;
+  L->nny = 1;
+  L->errfunc = 0;
+  lua_unlock(L);
+  return LUA_OK;
 }
 
 

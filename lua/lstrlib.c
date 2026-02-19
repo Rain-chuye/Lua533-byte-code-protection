@@ -770,11 +770,14 @@ static int gmatch (lua_State *L) {
   size_t ls, lp;
   const char *s = luaL_checklstring(L, 1, &ls);
   const char *p = luaL_checklstring(L, 2, &lp);
+  lua_Integer init = posrelat(luaL_optinteger(L, 3, 1), ls) - 1;
   GMatchState *gm;
+  if (init < 0) init = 0;
+  else if (init > (lua_Integer)ls) init = ls;
   lua_settop(L, 2);  /* keep them on closure to avoid being collected */
   gm = (GMatchState *)lua_newuserdata(L, sizeof(GMatchState));
   prepstate(&gm->ms, L, s, ls, p, lp);
-  gm->src = s; gm->p = p; gm->lastmatch = NULL;
+  gm->src = s + init; gm->p = p; gm->lastmatch = NULL;
   lua_pushcclosure(L, gmatch_aux, 3);
   return 1;
 }

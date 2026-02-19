@@ -921,7 +921,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
 }
 
 
-LUA_API void lua_setuservalue (lua_State *L, int idx) {
+LUA_API int lua_setuservalue (lua_State *L, int idx) {
   StkId o;
   lua_lock(L);
   api_checknelems(L, 1);
@@ -931,6 +931,7 @@ LUA_API void lua_setuservalue (lua_State *L, int idx) {
   luaC_barrier(L, gcvalue(o), L->top - 1);
   L->top--;
   lua_unlock(L);
+  return 1;
 }
 
 
@@ -1080,11 +1081,13 @@ LUA_API int lua_status (lua_State *L) {
 ** Garbage-collection function
 */
 
-LUA_API int lua_gc (lua_State *L, int what, int data) {
+LUA_API int lua_gc (lua_State *L, int what, ...) {
+  va_list argp;
   int res = 0;
   global_State *g;
   lua_lock(L);
   g = G(L);
+  va_start(argp, what);
   switch (what) {
     case LUA_GCSTOP: {
       g->gcrunning = 0;
@@ -1109,6 +1112,7 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
       break;
     }
     case LUA_GCSTEP: {
+      int data = va_arg(argp, int);
       l_mem debt = 1;  /* =1 to signal that it did an actual step */
       lu_byte oldrunning = g->gcrunning;
       g->gcrunning = 1;  /* allow GC to run */
@@ -1127,11 +1131,13 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
       break;
     }
     case LUA_GCSETPAUSE: {
+      int data = va_arg(argp, int);
       res = g->gcpause;
       g->gcpause = data;
       break;
     }
     case LUA_GCSETSTEPMUL: {
+      int data = va_arg(argp, int);
       res = g->gcstepmul;
       if (data < 40) data = 40;  /* avoid ridiculous low values (and 0) */
       g->gcstepmul = data;
@@ -1141,19 +1147,31 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
       res = g->gcrunning;
       break;
     }
-    case 10: { /* LUA_GCGEN */
+    case LUA_GCGEN: {
+      int minormul = va_arg(argp, int);
+      int majormul = va_arg(argp, int);
+      res = (g->gckind == KGC_GEN) ? LUA_GCGEN : LUA_GCINC;
       if (g->gckind != KGC_GEN) {
         luaC_fullgc(L, 0);
         g->gckind = KGC_GEN;
       }
+      if (minormul != 0) g->genminormul = minormul;
+      if (majormul != 0) g->genmajormul = majormul;
       break;
     }
-    case 11: { /* LUA_GCINC */
+    case LUA_GCINC: {
+      int pause = va_arg(argp, int);
+      int stepmul = va_arg(argp, int);
+      int stepsize = va_arg(argp, int);
+      res = (g->gckind == KGC_GEN) ? LUA_GCGEN : LUA_GCINC;
       g->gckind = KGC_INC;
+      if (pause != 0) g->gcpause = pause;
+      if (stepmul != 0) g->gcstepmul = stepmul;
       break;
     }
     default: res = -1;  /* invalid option */
   }
+  va_end(argp);
   lua_unlock(L);
   return res;
 }
@@ -1171,6 +1189,14 @@ LUA_API int lua_error (lua_State *L) {
   luaG_errormsg(L);
   /* code unreachable; will unlock when control actually leaves the kernel */
   return 0;  /* to avoid warnings */
+}
+
+
+LUA_API void lua_warning (lua_State *L, const char *msg, int tocont) {
+  lua_lock(L);
+  if (G(L)->warnf)
+    G(L)->warnf(G(L)->ud_warn, msg, tocont);
+  lua_unlock(L);
 }
 
 
@@ -1231,6 +1257,14 @@ LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud) {
   lua_lock(L);
   G(L)->ud = ud;
   G(L)->frealloc = f;
+  lua_unlock(L);
+}
+
+
+LUA_API void lua_setwarnf (lua_State *L, lua_WarnFunction f, void *ud) {
+  lua_lock(L);
+  G(L)->ud_warn = ud;
+  G(L)->warnf = f;
   lua_unlock(L);
 }
 

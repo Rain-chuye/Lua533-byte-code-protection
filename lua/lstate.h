@@ -131,7 +131,6 @@ typedef struct global_State {
   lu_byte gckind;  /* kind of GC running */
   lu_byte gcrunning;  /* true if GC is running */
   GCObject *allgc;  /* list of all collectable objects */
-  GCObject *oldgc;  /* list of old collectable objects */
   GCObject **sweepgc;  /* current position of sweep in list */
   GCObject *finobj;  /* list of collectable objects with finalizers */
   GCObject *gray;  /* list of gray objects */
@@ -145,10 +144,6 @@ typedef struct global_State {
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
   int gcpause;  /* size of pause between successive GCs */
   int gcstepmul;  /* GC 'granularity' */
-  int genminormul;
-  int genmajormul;
-  int gcstopem;
-  l_mem lastatomic;
   lua_CFunction panic;  /* to be called in unprotected errors */
   struct lua_State *mainthread;
   const lua_Number *version;  /* pointer to version number */
@@ -166,6 +161,13 @@ typedef struct global_State {
   lua_CFunction math_ceil;
   lua_CFunction math_sin;
   lua_CFunction math_cos;
+  int genminormul;
+  int genmajormul;
+  int gcstopem;
+  l_mem lastatomic;
+  lua_WarnFunction warnf;  /* warning function */
+  void *ud_warn;         /* auxiliary data to 'warnf' */
+  GCObject *oldgc;  /* list of old collectable objects */
 } global_State;
 
 

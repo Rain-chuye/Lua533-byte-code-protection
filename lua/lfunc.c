@@ -73,6 +73,7 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   }
   /* not found: create a new upvalue */
   uv = luaM_new(L, UpVal);
+  uv->tt = LUA_TUPVAL;
   uv->refcount = 0;
   uv->u.open.next = *pp;  /* link it to list of open upvalues */
   uv->u.open.touched = 1;
@@ -124,12 +125,12 @@ void luaF_close (lua_State *L, StkId level) {
   while (L->openupval != NULL && (uv = L->openupval)->v >= level) {
     lua_assert(upisopen(uv));
     L->openupval = uv->u.open.next;  /* remove from 'open' list */
-    if (uv->refcount == 0){
-      if(uv->tt==LUA_TUPVALTBC){
-          ptrdiff_t levelrel = savestack(L, level);
-          callclosemth(L,uv->v,level,0);
-          level = restorestack(L, levelrel);
-      }
+    if (uv->tt == LUA_TUPVALTBC) {
+      ptrdiff_t levelrel = savestack(L, level);
+      callclosemth(L, uv->v, level, 0);
+      level = restorestack(L, levelrel);
+    }
+    if (uv->refcount == 0) {
       /* no references? */
       luaM_free(L, uv);  /* free upvalue */
     } else {

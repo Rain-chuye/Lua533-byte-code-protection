@@ -148,6 +148,27 @@ static int luaB_corunning (lua_State *L) {
 }
 
 
+static int luaB_close (lua_State *L) {
+  lua_State *co = getco(L);
+  int status = lua_status(co);
+  if (status != LUA_OK && status != LUA_YIELD) {
+    lua_pushboolean(L, 0);
+    lua_pushliteral(L, "cannot close a dead coroutine");
+    return 2;
+  }
+  status = lua_resetthread(co);
+  if (status == LUA_OK) {
+    lua_pushboolean(L, 1);
+    return 1;
+  }
+  else {
+    lua_pushboolean(L, 0);
+    lua_xmove(co, L, 1);  /* move error message */
+    return 2;
+  }
+}
+
+
 static const luaL_Reg co_funcs[] = {
   {"create", luaB_cocreate},
   {"resume", luaB_coresume},
@@ -156,6 +177,7 @@ static const luaL_Reg co_funcs[] = {
   {"wrap", luaB_cowrap},
   {"yield", luaB_yield},
   {"isyieldable", luaB_yieldable},
+  {"close", luaB_close},
   {NULL, NULL}
 };
 

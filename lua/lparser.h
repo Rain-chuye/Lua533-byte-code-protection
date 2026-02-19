@@ -71,6 +71,7 @@ typedef struct expdesc {
 /* description of active local variable */
 typedef struct Vardesc {
   short idx;  /* variable index in stack */
+  lu_byte attr; /* variable attribute */
 } Vardesc;
 
 

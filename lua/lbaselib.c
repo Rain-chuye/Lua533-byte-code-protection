@@ -138,6 +138,19 @@ static int luaB_tointeger (lua_State *L) {
 }
 
 
+static int luaB_warn (lua_State *L) {
+  int n = lua_gettop(L);
+  int i;
+  luaL_checkstring(L, 1);
+  for (i = 2; i <= n; i++)
+    luaL_checkstring(L, i);
+  for (i = 1; i < n; i++)
+    lua_warning(L, lua_tostring(L, i), 1);
+  lua_warning(L, lua_tostring(L, n), 0);
+  return 0;
+}
+
+
 static int luaB_error (lua_State *L) {
   int level = (int)luaL_optinteger(L, 2, 1);
   lua_settop(L, 1);
@@ -237,21 +250,45 @@ static int luaB_collectgarbage (lua_State *L) {
     "isrunning", "generational", "incremental", NULL};
   static const int optsnum[] = {LUA_GCSTOP, LUA_GCRESTART, LUA_GCCOLLECT,
     LUA_GCCOUNT, LUA_GCSTEP, LUA_GCSETPAUSE, LUA_GCSETSTEPMUL,
-    LUA_GCISRUNNING, 10, 11};
+    LUA_GCISRUNNING, LUA_GCGEN, LUA_GCINC};
   int o = optsnum[luaL_checkoption(L, 1, "collect", opts)];
-  int ex = (int)luaL_optinteger(L, 2, 0);
-  int res = lua_gc(L, o, ex);
   switch (o) {
     case LUA_GCCOUNT: {
+      int res = lua_gc(L, o, 0);
       int b = lua_gc(L, LUA_GCCOUNTB, 0);
       lua_pushnumber(L, (lua_Number)res + ((lua_Number)b/1024));
-      return 1;
+      lua_pushinteger(L, b);
+      return 2;
     }
-    case LUA_GCSTEP: case LUA_GCISRUNNING: {
+    case LUA_GCSTEP: {
+      int data = (int)luaL_optinteger(L, 2, 0);
+      int res = lua_gc(L, o, data);
       lua_pushboolean(L, res);
       return 1;
     }
+    case LUA_GCISRUNNING: {
+      int res = lua_gc(L, o, 0);
+      lua_pushboolean(L, res);
+      return 1;
+    }
+    case LUA_GCGEN: {
+      int minormul = (int)luaL_optinteger(L, 2, 0);
+      int majormul = (int)luaL_optinteger(L, 3, 0);
+      int res = lua_gc(L, o, minormul, majormul);
+      lua_pushstring(L, (res == LUA_GCGEN) ? "generational" : "incremental");
+      return 1;
+    }
+    case LUA_GCINC: {
+      int pause = (int)luaL_optinteger(L, 2, 0);
+      int stepmul = (int)luaL_optinteger(L, 3, 0);
+      int stepsize = (int)luaL_optinteger(L, 4, 0);
+      int res = lua_gc(L, o, pause, stepmul, stepsize);
+      lua_pushstring(L, (res == LUA_GCGEN) ? "generational" : "incremental");
+      return 1;
+    }
     default: {
+      int data = (int)luaL_optinteger(L, 2, 0);
+      int res = lua_gc(L, o, data);
       lua_pushinteger(L, res);
       return 1;
     }
@@ -695,6 +732,7 @@ static const luaL_Reg base_funcs[] = {
   {"tonumber", luaB_tonumber},
   {"tostring", luaB_tostring},
   {"type", luaB_type},
+  {"warn", luaB_warn},
   {"xpcall", luaB_xpcall},
   /* placeholders */
   {"_G", NULL},

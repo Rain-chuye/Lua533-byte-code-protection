@@ -20,6 +20,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 #include "lstate.h"
+#include "lvm.h"
 
 
 #undef PI
@@ -140,6 +141,25 @@ static int math_fmod (lua_State *L) {
   else
     lua_pushnumber(L, l_mathop(fmod)(luaL_checknumber(L, 1),
                                      luaL_checknumber(L, 2)));
+  return 1;
+}
+
+
+static int math_idiv (lua_State *L) {
+  if (lua_isinteger(L, 1) && lua_isinteger(L, 2)) {
+    lua_Integer n1 = lua_tointeger(L, 1);
+    lua_Integer n2 = lua_tointeger(L, 2);
+    if (n2 == 0) luaL_argerror(L, 2, "zero");
+    else
+      lua_pushinteger(L, luaV_div(L, n1, n2));
+  }
+  else {
+    lua_Number n1 = luaL_checknumber(L, 1);
+    lua_Number n2 = luaL_checknumber(L, 2);
+    if (n2 == 0) luaL_argerror(L, 2, "zero");
+    else
+      lua_pushnumber(L, l_mathop(floor)(n1 / n2));
+  }
   return 1;
 }
 
@@ -686,6 +706,7 @@ static const luaL_Reg mathlib[] = {
   {"tointeger", math_toint},
   {"floor", math_floor},
   {"fmod",   math_fmod},
+  {"idiv",   math_idiv},
   {"ult",   math_ult},
   {"log",   math_log},
   {"max",   math_max},

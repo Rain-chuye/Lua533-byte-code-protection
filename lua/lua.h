@@ -119,6 +119,12 @@ typedef int (*lua_Writer) (lua_State *L, const void *p, size_t sz, void *ud);
 
 
 /*
+** Type for warning functions
+*/
+typedef void (*lua_WarnFunction) (void *ud, const char *msg, int tocont);
+
+
+/*
 ** Type for memory-allocation functions
 */
 typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
@@ -248,9 +254,11 @@ LUA_API int (lua_rawgeti) (lua_State *L, int idx, lua_Integer n);
 LUA_API int (lua_rawgetp) (lua_State *L, int idx, const void *p);
 
 LUA_API void  (lua_createtable) (lua_State *L, int narr, int nrec);
+LUA_API void *(lua_newuserdatauv) (lua_State *L, size_t sz, int nuv);
 LUA_API void *(lua_newuserdata) (lua_State *L, size_t sz);
 LUA_API int   (lua_getmetatable) (lua_State *L, int objindex);
-LUA_API int  (lua_getuservalue) (lua_State *L, int idx);
+LUA_API int   (lua_getiuservalue) (lua_State *L, int idx, int n);
+LUA_API int   (lua_getuservalue) (lua_State *L, int idx);
 
 
 /*
@@ -264,7 +272,8 @@ LUA_API void  (lua_rawset) (lua_State *L, int idx);
 LUA_API void  (lua_rawseti) (lua_State *L, int idx, lua_Integer n);
 LUA_API void  (lua_rawsetp) (lua_State *L, int idx, const void *p);
 LUA_API int   (lua_setmetatable) (lua_State *L, int objindex);
-LUA_API void  (lua_setuservalue) (lua_State *L, int idx);
+LUA_API int   (lua_setiuservalue) (lua_State *L, int idx, int n);
+LUA_API int   (lua_setuservalue) (lua_State *L, int idx);
 
 //mod by nirenr
 LUA_API void  (lua_const) (lua_State *L, int idx);
@@ -295,6 +304,8 @@ LUA_API int  (lua_resume)     (lua_State *L, lua_State *from, int narg);
 LUA_API int  (lua_status)     (lua_State *L);
 LUA_API int (lua_isyieldable) (lua_State *L);
 
+LUA_API int (lua_resetthread) (lua_State *L);
+
 #define lua_yield(L,n)		lua_yieldk(L, (n), 0, NULL)
 
 
@@ -311,8 +322,10 @@ LUA_API int (lua_isyieldable) (lua_State *L);
 #define LUA_GCSETPAUSE		6
 #define LUA_GCSETSTEPMUL	7
 #define LUA_GCISRUNNING		9
+#define LUA_GCGEN		10
+#define LUA_GCINC		11
 
-LUA_API int (lua_gc) (lua_State *L, int what, int data);
+LUA_API int (lua_gc) (lua_State *L, int what, ...);
 
 
 /*
@@ -320,6 +333,8 @@ LUA_API int (lua_gc) (lua_State *L, int what, int data);
 */
 
 LUA_API int   (lua_error) (lua_State *L);
+
+LUA_API void  (lua_warning) (lua_State *L, const char *msg, int tocont);
 
 LUA_API int   (lua_next) (lua_State *L, int idx);
 

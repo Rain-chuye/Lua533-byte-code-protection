@@ -199,6 +199,7 @@ static void LoadUpvalues (LoadState *S, Proto *f) {
   for (i = 0; i < n; i++) {
     f->upvalues[i].instack = LoadByte(S);
     f->upvalues[i].idx = LoadByte(S);
+    f->upvalues[i].attr = LoadByte(S);
   }
 }
 

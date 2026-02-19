@@ -96,21 +96,7 @@ static int size (lua_State *L) {
 
 static int clear (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  Table *t = (Table *)lua_topointer(L, 1);
-  unsigned int i;
-  for (i = 0; i < t->sizearray; i++) setnilvalue(&t->array[i]);
-  int s = sizenode(t);
-  if (t->lastfree != t->node) {
-    for (i = 0; i < (unsigned int)s; i++) {
-      Node *n = gnode(t, i);
-      setnilvalue(gval(n));
-      if (!ttisnil(gkey(n))) {
-        setdeadvalue(wgkey(n));
-      }
-    }
-    t->lastfree = gnode(t, s);
-  }
-  invalidateTMcache(t);
+  luaH_clear(hvalue((const TValue *)lua_toluaobject(L, 1)));
   return 0;
 }
 

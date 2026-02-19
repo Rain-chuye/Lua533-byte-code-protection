@@ -39,6 +39,14 @@
 #define hasmultret(k)		((k) == VCALL || (k) == VVARARG)
 
 
+/*
+** Variable descriptors. (In 5.4, these are in lparser.c)
+*/
+#define VDKREG		0   /* regular variable */
+#define VDKCONST	1   /* constant variable */
+#define VDKTBC		2   /* to-be-closed variable */
+
+
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
 #define eqstr(a,b)	((a) == (b))
@@ -158,10 +166,7 @@ static void check_match (LexState *ls, int what, int who, int where) {
 
 static TString *str_checkname (LexState *ls) {
   TString *ts;
-  //check(ls, TK_NAME);
-  //mod by nirenr
-  if (ls->t.token != TK_NAME&&(ls->t.token > TK_WHILE||ls->t.token <FIRST_RESERVED))
-    error_expected(ls, TK_NAME);
+  check(ls, TK_NAME);
   ts = ls->t.seminfo.ts;
   luaX_next(ls);
   return ts;
@@ -182,6 +187,19 @@ static void codestring (LexState *ls, expdesc *e, TString *s) {
 
 static void checkname (LexState *ls, expdesc *e) {
   codestring(ls, e, str_checkname(ls));
+}
+
+
+/*
+  Mark block where variable at given level was defined
+  (to emit close instructions later).
+*/
+static void markupval (FuncState *fs, int level) {
+  BlockCnt *bl = fs->bl;
+  while (bl->nactvar > level)
+    bl = bl->previous;
+  bl->upval = 1;
+  fs->needclose = 1;
 }
 
 
@@ -207,7 +225,28 @@ static void new_localvar (LexState *ls, TString *name) {
                   MAXVARS, "local variables");
   luaM_growvector(ls->L, dyd->actvar.arr, dyd->actvar.n + 1,
                   dyd->actvar.size, Vardesc, MAX_INT, "local variables");
-  dyd->actvar.arr[dyd->actvar.n++].idx = cast(short, reg);
+  dyd->actvar.arr[dyd->actvar.n].idx = cast(short, reg);
+  dyd->actvar.arr[dyd->actvar.n].attr = 0;
+  dyd->actvar.n++;
+}
+
+
+static int getlocattr (LexState *ls) {
+  if (testnext(ls, '<')) {
+    const char *attr = getstr(str_checkname(ls));
+    checknext(ls, '>');
+    if (strcmp(attr, "const") == 0) return VDKCONST;
+    else if (strcmp(attr, "close") == 0) return VDKTBC;
+    else luaX_syntaxerror(ls,
+           luaO_pushfstring(ls->L, "未知属性 '%s'", attr));
+  }
+  return VDKREG;
+}
+
+
+static void setlocattr (LexState *ls, int nvars, int attr) {
+  Vardesc *vd = &ls->dyd->actvar.arr[ls->fs->firstlocal + ls->fs->nactvar + nvars];
+  vd->attr = cast_byte(attr);
 }
 
 
@@ -228,9 +267,15 @@ static LocVar *getlocvar (FuncState *fs, int i) {
 
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
+  int reg = fs->nactvar;
   fs->nactvar = cast_byte(fs->nactvar + nvars);
   for (; nvars; nvars--) {
+    Vardesc *vd = &ls->dyd->actvar.arr[fs->firstlocal + fs->nactvar - nvars];
     getlocvar(fs, fs->nactvar - nvars)->startpc = fs->pc;
+    if (vd->attr == VDKTBC) {
+      markupval(fs, fs->nactvar - nvars);
+      luaK_codeABC(fs, OP_TBC, reg + (fs->nactvar - reg - nvars), 0, 0);
+    }
   }
 }
 
@@ -263,9 +308,17 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   f->upvalues[fs->nups].instack = (v->k == VLOCAL);
   f->upvalues[fs->nups].idx = cast_byte(v->u.info);
   f->upvalues[fs->nups].name = name;
+  if (v->k == VLOCAL && fs->prev && fs->ls->dyd->actvar.n > fs->prev->firstlocal + v->u.info)
+    f->upvalues[fs->nups].attr = fs->ls->dyd->actvar.arr[fs->prev->firstlocal + v->u.info].attr;
+  else if (v->k == VUPVAL && fs->prev)
+    f->upvalues[fs->nups].attr = fs->prev->f->upvalues[v->u.info].attr;
+  else
+    f->upvalues[fs->nups].attr = 0;
   luaC_objbarrier(fs->ls->L, f, name);
   return fs->nups++;
 }
+
+
 
 
 static int searchvar (FuncState *fs, TString *n) {
@@ -275,19 +328,6 @@ static int searchvar (FuncState *fs, TString *n) {
       return i;
   }
   return -1;  /* not found */
-}
-
-
-/*
-  Mark block where variable at given level was defined
-  (to emit close instructions later).
-*/
-static void markupval (FuncState *fs, int level) {
-  BlockCnt *bl = fs->bl;
-  while (bl->nactvar > level)
-    bl = bl->previous;
-  bl->upval = 1;
-  fs->needclose = 1;
 }
 
 
@@ -1432,6 +1472,12 @@ static BinOpr get_compound_opr(int token) {
 static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
   check_condition(ls, vkisvar(lh->v.k), "语法错误");
+  if (lh->v.k == VLOCAL &&
+      ls->dyd->actvar.arr[ls->fs->firstlocal + lh->v.u.info].attr != VDKREG)
+    luaX_syntaxerror(ls, "尝试对 常量 赋值");
+  else if (lh->v.k == VUPVAL &&
+           ls->fs->f->upvalues[lh->v.u.info].attr != VDKREG)
+    luaX_syntaxerror(ls, "尝试对 常量 赋值");
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
@@ -1942,13 +1988,12 @@ static void commonlocalstat (LexState *ls) {
   /* stat -> LOCAL NAME {',' NAME} ['=' explist] */
   int nvars = 0;
   int nexps;
-  if(testnext(ls,'<')){
-    str_checkname(ls);
-    checknext(ls,'>');
-  }
   expdesc e;
   do {
-    new_localvar(ls, str_checkname(ls));
+    TString *name = str_checkname(ls);
+    int attr = getlocattr(ls);
+    new_localvar(ls, name);
+    setlocattr(ls, nvars, attr);
     nvars++;
   } while (testnext(ls, ','));
   if (testnext(ls, '='))
@@ -2039,6 +2084,9 @@ static void funcstat (LexState *ls, int line) {
   expdesc v, b;
   luaX_next(ls);  /* skip FUNCTION */
   ismethod = funcname(ls, &v);
+  if (v.k == VLOCAL &&
+      ls->dyd->actvar.arr[ls->fs->firstlocal + v.u.info].attr != VDKREG)
+    luaX_syntaxerror(ls, "尝试对 常量 赋值");
   body(ls, &b, ismethod, line);
   luaK_storevar(ls->fs, &v, &b);
   luaK_fixline(ls->fs, line);  /* definition "happens" in the first line */
