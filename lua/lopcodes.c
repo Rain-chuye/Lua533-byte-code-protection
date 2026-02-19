@@ -77,6 +77,11 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "FUSE_NOP",
   "FUSE_PARTICLE_DIST",
   "FUSE_ADD_TO_FIELD",
+  "SUPER_MOVE_LOADK",
+  "SUPER_MOVE_MOVE",
+  "SUPER_GETTABLE_CALL",
+  "FUSE_GETTABLE_TEST",
+  "FUSE_GETTABLE_EQ",
   NULL
 };
 
@@ -144,4 +149,9 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, OpArgN, OpArgN, iABC)		/* OP_FUSE_NOP */
  ,opmode(0, 1, OpArgR, OpArgR, iABC)		/* OP_FUSE_PARTICLE_DIST */
  ,opmode(0, 0, OpArgR, OpArgK, iABC)		/* OP_FUSE_ADD_TO_FIELD */
+ ,opmode(0, 1, OpArgK, OpArgN, iABx)		/* OP_SUPER_MOVE_LOADK */
+ ,opmode(0, 1, OpArgR, OpArgN, iABC)		/* OP_SUPER_MOVE_MOVE */
+ ,opmode(0, 1, OpArgR, OpArgK, iABC)		/* OP_SUPER_GETTABLE_CALL */
+ ,opmode(1, 1, OpArgR, OpArgK, iABC)		/* OP_FUSE_GETTABLE_TEST */
+ ,opmode(1, 1, OpArgR, OpArgK, iABC)		/* OP_FUSE_GETTABLE_EQ */
 };

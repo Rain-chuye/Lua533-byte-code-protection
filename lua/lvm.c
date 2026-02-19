@@ -850,7 +850,7 @@ void luaV_execute (lua_State *L) {
     &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST, &&L_OP_CLOSURE,
     &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC, &&L_OP_NEWARRAY, &&L_OP_TFOREACH,
     &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST,
-    &&L_OP_FUSE_ADD_TO_FIELD
+    &&L_OP_FUSE_ADD_TO_FIELD, &&L_OP_SUPER_MOVE_LOADK, &&L_OP_SUPER_MOVE_MOVE, &&L_OP_SUPER_GETTABLE_CALL, &&L_OP_FUSE_GETTABLE_TEST, &&L_OP_FUSE_GETTABLE_EQ
   };
 #endif
   CallInfo *ci = L->ci;
@@ -935,18 +935,45 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_GETTABUP) {
         TValue *upval = cl->upvals[GETARG_B(i)]->v;
         TValue *rc = RKC(i);
+        if (__builtin_expect(ttistable(upval), 1)) {
+            Table *t = hvalue(upval);
+            if (t->metatable == NULL) {
+                const TValue *slot = NULL;
+                if (ttisshrstring(rc)) slot = luaH_getshortstr(t, tsvalue(rc));
+                else if (ttisinteger(rc)) {
+                    lua_Integer k = ivalue(rc);
+                    if (l_castS2U(k) - 1 < t->sizearray) slot = &t->array[k - 1];
+                    else slot = luaH_getint(t, k);
+                }
+                if (slot && !ttisnil(slot)) {
+                    setobj2s(L, ra, slot);
+                    vmbreak;
+                }
+            }
+        }
         gettableProtected(L, upval, rc, ra);
         vmbreak;
       }
       vmcase(OP_GETTABLE) {
         StkId rb = RB(i);
         TValue *rc = RKC(i);
-        if (ttistable(rb) && ttisinteger(rc)) {
+        if (__builtin_expect(ttistable(rb), 1)) {
             Table *t = hvalue(rb);
-            lua_Integer idx = ivalue(rc);
-            if (idx > 0 && idx <= t->sizearray) {
-                setobj2s(L, ra, &t->array[idx - 1]);
-                vmbreak;
+            if (t->metatable == NULL) {
+                const TValue *slot = NULL;
+                if (ttisinteger(rc)) {
+                    lua_Integer idx = ivalue(rc);
+                    if (l_castS2U(idx) - 1 < t->sizearray) {
+                        setobj2s(L, ra, &t->array[idx - 1]);
+                        vmbreak;
+                    }
+                    slot = luaH_getint(t, idx);
+                }
+                else if (ttisshrstring(rc)) slot = luaH_getshortstr(t, tsvalue(rc));
+                if (slot && !ttisnil(slot)) {
+                    setobj2s(L, ra, slot);
+                    vmbreak;
+                }
             }
         }
         gettableProtected(L, rb, rc, ra);
@@ -956,6 +983,23 @@ void luaV_execute (lua_State *L) {
         TValue *upval = cl->upvals[GETARG_A(i)]->v;
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
+        if (__builtin_expect(ttistable(upval), 1)) {
+            Table *t = hvalue(upval);
+            if (t->metatable == NULL) {
+                const TValue *slot = NULL;
+                if (ttisshrstring(rb)) slot = luaH_getshortstr(t, tsvalue(rb));
+                else if (ttisinteger(rb)) {
+                    lua_Integer k = ivalue(rb);
+                    if (l_castS2U(k) - 1 < t->sizearray) slot = &t->array[k - 1];
+                    else slot = luaH_getint(t, k);
+                }
+                if (slot && !ttisnil(slot)) {
+                    setobj2t(L, cast(TValue *, slot), rc);
+                    luaC_barrierback(L, t, rc);
+                    vmbreak;
+                }
+            }
+        }
         if(ttistable(ra)) {
             Table *t = hvalue(ra);
             switch (t->type) {
@@ -1769,6 +1813,56 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_TBC) {
         UpVal *up = luaF_findupval(L, ra);  /* create new upvalue */
         up->tt = LUA_TUPVALTBC;  /* mark it to be closed */
+        vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_LOADK) {
+        setobjs2s(L, ra, RB(i));
+        TValue *rb = k + GETARG_Bx(i);
+        setobj2s(L, ra + 1, rb);
+        decrypt_tv(ra + 1);
+        vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_MOVE) {
+        setobjs2s(L, ra, RB(i));
+        setobjs2s(L, ra + 1, RC(i));
+        vmbreak;
+      }
+      vmcase(OP_SUPER_GETTABLE_CALL) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        /* Simple assumption: SUPER_GETTABLE_CALL R(A), R(B), RK(C)
+           followed by standard CALL logic with nargs=0, nresults=1 or similar */
+        gettableProtected(L, rb, rc, ra);
+        ra = RA(i);
+        if (luaD_precall(L, ra, 0)) {
+          Protect((void)0);
+        } else {
+          ci = L->ci;
+          goto newframe;
+        }
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETTABLE_TEST) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        gettableProtected(L, rb, rc, ra);
+        ra = RA(i);
+        if (l_isfalse(ra)) ci->u.l.savedpc++;
+        else donextjump(ci);
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETTABLE_EQ) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        gettableProtected(L, rb, rc, ra);
+        ra = RA(i);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        TValue *rd = RKB(next_i);
+        if (luaV_equalobj(L, ra, rd) != GETARG_A(next_i))
+            ci->u.l.savedpc++;
+        else
+            donextjump(ci);
         vmbreak;
       }
 #if !defined(LUA_USE_JUMP_TABLE)
