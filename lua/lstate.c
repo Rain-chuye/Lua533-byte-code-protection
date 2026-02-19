@@ -337,7 +337,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->version = NULL;
   g->gcstate = GCSpause;
   g->gckind = KGC_INC;
-  g->allgc = g->finobj = g->tobefnz = g->fixedgc = NULL;
+  g->allgc = g->oldgc = g->finobj = g->tobefnz = g->fixedgc = NULL;
   g->sweepgc = NULL;
   g->gray = g->grayagain = NULL;
   g->weak = g->ephemeron = g->allweak = NULL;
@@ -348,7 +348,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->gcfinnum = 0;
   g->gcpause = LUAI_GCPAUSE;
   g->gcstepmul = LUAI_GCMUL;
-  g->genminormul = 20;
+  g->genminormul = 100; /* Less frequent minor GC to reduce lag */
   g->genmajormul = 100;
   g->gcstopem = 0;
   for (i=0; i < LUA_NUMTAGS; i++) g->mt[i] = NULL;

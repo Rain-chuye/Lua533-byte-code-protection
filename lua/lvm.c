@@ -983,19 +983,33 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_SETTABLE) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
-        if(ttistable(ra)) {
+        if(__builtin_expect(ttistable(ra), 1)) {
             Table *t = hvalue(ra);
             switch (t->type) {
                 case 1:
-                    if (!ttisinteger(rb))
-                        luaG_runerror(L, "数组键必须是整数");
+                    if (!ttisinteger(rb)) luaG_runerror(L, "数组键必须是整数");
                     break;
                 case 2:
                     luaG_runerror(L, "常量表不能被修改");
                     break;
                 case 3:
-                    luaG_runerror(L, "数组键必须是整数");
+                    if (!ttisinteger(rb)) luaG_runerror(L, "数组键必须是整数");
+                    luaG_runerror(L, "常量数组不能被修改");
                     break;
+            }
+            if (t->metatable == NULL) {
+              const TValue *slot = NULL;
+              if (ttisshrstring(rb)) slot = luaH_getshortstr(t, tsvalue(rb));
+              else if (ttisinteger(rb)) {
+                lua_Integer k = ivalue(rb);
+                if (l_castS2U(k) - 1 < t->sizearray) slot = &t->array[k - 1];
+                else slot = luaH_getint(t, k);
+              }
+              if (slot && !ttisnil(slot)) {
+                setobj2t(L, cast(TValue *, slot), rc);
+                luaC_barrierback(L, t, rc);
+                vmbreak;
+              }
             }
         }
         settableProtected(L, ra, rb, rc);
@@ -1404,6 +1418,18 @@ void luaV_execute (lua_State *L) {
               lua_Integer res;
               if (luaV_tointeger(arg, &res, 2)) { setivalue(ra, res); }
               else { setfltvalue(ra, l_mathop(ceil)(fltvalue(arg))); }
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_sin) {
+            lua_Number n;
+            if (tonumber(ra + 1, &n)) {
+              setfltvalue(ra, l_mathop(sin)(n));
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_cos) {
+            lua_Number n;
+            if (tonumber(ra + 1, &n)) {
+              setfltvalue(ra, l_mathop(cos)(n));
               goto l_call_fast_done;
             }
           }

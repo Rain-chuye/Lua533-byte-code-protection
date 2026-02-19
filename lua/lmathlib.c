@@ -735,5 +735,7 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   G(L)->math_sqrt = math_sqrt;
   G(L)->math_floor = math_floor;
   G(L)->math_ceil = math_ceil;
+  G(L)->math_sin = math_sin;
+  G(L)->math_cos = math_cos;
   return 1;
 }

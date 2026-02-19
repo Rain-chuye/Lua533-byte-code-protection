@@ -254,7 +254,7 @@ GCObject *luaC_newobj (lua_State *L, int tt, size_t sz) {
 */
 static void reallymarkobject (global_State *g, GCObject *o) {
  reentry:
-  if (!iswhite(o) && !(g->gcstopem && isblack(o))) return;
+  if (!iswhite(o)) return;
   white2gray(o);
   switch (o->tt) {
     case LUA_TSHRSTR: {
@@ -994,6 +994,7 @@ void luaC_freeallobjects (lua_State *L) {
   g->gckind = KGC_INC;
   sweepwholelist(L, &g->finobj);
   sweepwholelist(L, &g->allgc);
+  sweepwholelist(L, &g->oldgc);
   sweepwholelist(L, &g->fixedgc);  /* collect fixed objects */
   lua_assert(g->strt.nuse == 0);
 }
@@ -1042,9 +1043,15 @@ static l_mem atomic (lua_State *L) {
   luaS_clearcache(g);
   g->currentwhite = cast_byte(otherwhite(g));  /* flip current white */
   if (g->gckind == KGC_GEN) {
-    GCObject *curr;
-    for (curr = g->allgc; curr != NULL; curr = curr->next)
+    GCObject *curr, *next;
+    for (curr = g->allgc; curr != NULL; curr = next) {
+      next = curr->next;
       setage(curr, G_OLD);
+      gray2black(curr);
+      curr->next = g->oldgc;
+      g->oldgc = curr;
+    }
+    g->allgc = NULL;
   }
   work += g->GCmemtrav;  /* complete counting */
   return work;  /* estimate of memory marked by 'atomic' */
@@ -1089,10 +1096,12 @@ static void youngcollection (lua_State *L, global_State *g) {
   clearvalues(g, g->weak, NULL);
   clearvalues(g, g->allweak, NULL);
 
-  /* 3. Sweep young objects. */
+  /* 3. Sweep young objects. Move promoted to oldgc. */
   while ((curr = *p) != NULL) {
-    if (isold(curr)) {
-      p = &curr->next;
+    if (isold(curr)) { /* Should not happen if lists are separate, but for safety */
+      *p = curr->next;
+      curr->next = g->oldgc;
+      g->oldgc = curr;
       continue;
     }
     if (iswhite(curr)) {
@@ -1103,11 +1112,15 @@ static void youngcollection (lua_State *L, global_State *g) {
       if (getage(curr) < G_OLD) setage(curr, getage(curr) + 1);
       if (getage(curr) == G_OLD) {
         gray2black(curr); /* Promoted! Make it black */
+        /* Move to oldgc */
+        *p = curr->next;
+        curr->next = g->oldgc;
+        g->oldgc = curr;
       }
       else {
         makewhite(g, curr); /* Reset to white for next cycle */
+        p = &curr->next;
       }
-      p = &curr->next;
     }
   }
 
