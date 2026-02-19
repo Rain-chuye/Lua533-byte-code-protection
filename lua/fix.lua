@@ -1,0 +1,1 @@
+print('FIX_VERIFIED')
