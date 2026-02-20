@@ -1,0 +1,21 @@
+      vmcase(OP_TBC) {
+        UpVal *up = luaF_findupval(L, ra);  /* create new upvalue */
+        up->tt = LUA_TUPVALTBC;  /* mark it to be closed */
+        vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_LOADK) {
+        setobjs2s(L, ra, RB(i));
+        TValue *rb = k + GETARG_Bx(i);
+        setobj2s(L, ra + 1, rb);
+        decrypt_tv(ra + 1);
+        vmbreak;
+      }
+      vmcase(OP_SUPER_MOVE_MOVE) {
+        setobjs2s(L, ra, RB(i));
+        setobjs2s(L, ra + 1, RC(i));
+        vmbreak;
+      }
+      vmcase(OP_SUPER_GETTABLE_CALL) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        /* Simple assumption: SUPER_GETTABLE_CALL R(A), R(B), RK(C)

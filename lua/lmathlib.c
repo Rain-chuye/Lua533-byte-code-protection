@@ -6,6 +6,7 @@
 
 #define lmathlib_c
 #define LUA_LIB
+#define LUA_CORE
 
 #include "lprefix.h"
 
@@ -758,5 +759,8 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   G(L)->math_ceil = math_ceil;
   G(L)->math_sin = math_sin;
   G(L)->math_cos = math_cos;
+  G(L)->math_min = math_min;
+  G(L)->math_max = math_max;
+  G(L)->math_type = math_type;
   return 1;
 }

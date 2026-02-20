@@ -1,0 +1,41 @@
+1100-    case OPR_SHL: case OPR_SHR: {
+1101-      if (!tonumeral(v, NULL))
+1102-        luaK_exp2RK(fs, v);
+1103-      /* else keep numeral, which may be folded with 2nd operand */
+1104-      break;
+1105-    }
+1106-    default: {
+1107-      luaK_exp2RK(fs, v);
+1108-      break;
+1109-    }
+1110-  }
+1111-}
+1112-
+1113-
+1114-/*
+1115-** Finalize code for binary operation, after reading 2nd operand.
+1116-** For '(a .. b .. c)' (which is '(a .. (b .. c))', because
+1117-** concatenation is right associative), merge second CONCAT into first
+1118-** one.
+1119-*/
+1120:void luaK_posfix (FuncState *fs, BinOpr op,
+1121-                  expdesc *e1, expdesc *e2, int line) {
+1122-  switch (op) {
+1123-    case OPR_AND: {
+1124-      lua_assert(e1->t == NO_JUMP);  /* list closed by 'luK_infix' */
+1125-      luaK_dischargevars(fs, e2);
+1126-      luaK_concat(fs, &e2->f, e1->f);
+1127-      *e1 = *e2;
+1128-      break;
+1129-    }
+1130-    case OPR_OR: {
+1131-      lua_assert(e1->f == NO_JUMP);  /* list closed by 'luK_infix' */
+1132-      luaK_dischargevars(fs, e2);
+1133-      luaK_concat(fs, &e2->t, e1->t);
+1134-      *e1 = *e2;
+1135-      break;
+1136-    }
+1137-    case OPR_CONCAT: {
+1138-      luaK_exp2val(fs, e2);
+1139-      if (e2->k == VRELOCABLE &&
+1140-          GET_OPCODE(getinstruction(fs, e2)) == OP_CONCAT) {

@@ -33,7 +33,7 @@ static void fuse_instructions_internal(Proto *f) {
             Instruction i4 = f->code[i+3];
             if (GET_OPCODE(i1) == OP_MUL && GETARG_B(i1) == GETARG_C(i1) &&
                 GET_OPCODE(i2) == OP_MUL && GETARG_B(i2) == GETARG_C(i2) &&
-                GET_OPCODE(i3) == OP_ADD && GETARG_B(i3) == GETARG_A(i1) && GETARG_C(i3) == GETARG_A(i2) &&
+                GET_OPCODE(i3) == OP_ADD && ((GETARG_B(i3) == GETARG_A(i1) && GETARG_C(i3) == GETARG_A(i2)) || (GETARG_B(i3) == GETARG_A(i2) && GETARG_C(i3) == GETARG_A(i1))) &&
                 GET_OPCODE(i4) == OP_POW && GETARG_B(i4) == GETARG_A(i3)) {
                 int ra = GETARG_A(i4);
                 int rb = GETARG_B(i1);
@@ -55,27 +55,96 @@ static void fuse_instructions_internal(Proto *f) {
 
         if (op1 == OP_FUSE_NOP) continue;
 
-        /* Pattern 1: Ra = Rb.Rc; Ra = Ra - Rd -> Ra = FUSE_GETSUB(Rb, Rc, Rd) */
-        if (op1 == OP_GETTABLE && op2 == OP_SUB &&
-            GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
-            int ra = GETARG_A(inst1);
-            int rb = GETARG_B(inst1);
-            int rc = GETARG_C(inst1);
-            int rd = GETARG_C(inst2);
-            f->code[i] = CREATE_ABC(OP_FUSE_GETSUB, ra, rb, rc);
-            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, rd);
+        /* INC / DEC */
+        if (op1 == OP_ADD && GETARG_A(inst1) == GETARG_B(inst1) && ISK(GETARG_C(inst1))) {
+            TValue *kv = &f->k[INDEXK(GETARG_C(inst1))];
+            if (ttisinteger(kv) && ivalue(kv) == 1) {
+                f->code[i] = CREATE_ABC(OP_INC, GETARG_A(inst1), 0, 0);
+                continue;
+            }
+        }
+        if (op1 == OP_ADD && GETARG_A(inst1) == GETARG_C(inst1) && ISK(GETARG_B(inst1))) {
+            TValue *kv = &f->k[INDEXK(GETARG_B(inst1))];
+            if (ttisinteger(kv) && ivalue(kv) == 1) {
+                f->code[i] = CREATE_ABC(OP_INC, GETARG_A(inst1), 0, 0);
+                continue;
+            }
+        }
+        if (op1 == OP_SUB && GETARG_A(inst1) == GETARG_B(inst1) && ISK(GETARG_C(inst1))) {
+            TValue *kv = &f->k[INDEXK(GETARG_C(inst1))];
+            if (ttisinteger(kv) && ivalue(kv) == 1) {
+                f->code[i] = CREATE_ABC(OP_DEC, GETARG_A(inst1), 0, 0);
+                continue;
+            }
+        }
+
+        /* Ra = Rb.Rc; Ra = Ra op Rd */
+        if (op1 == OP_GETTABLE && GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
+            if (op2 == OP_SUB) {
+                f->code[i] = CREATE_ABC(OP_FUSE_GETSUB, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
+                f->code[i+1] = CREATE_Ax(OP_EXTRAARG, GETARG_C(inst2));
+                i++; continue;
+            } else if (op2 == OP_ADD) {
+                f->code[i] = CREATE_ABC(OP_FUSE_GETADD, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
+                f->code[i+1] = CREATE_Ax(OP_EXTRAARG, GETARG_C(inst2));
+                i++; continue;
+            }
+        }
+
+        /* SUPER_SELF_CALL */
+        if (op1 == OP_SELF && op2 == OP_CALL && GETARG_A(inst1) == GETARG_A(inst2)) {
+            f->code[i] = CREATE_ABC(OP_SUPER_SELF_CALL, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
             i++; continue;
         }
-        else if (op1 == OP_GETTABLE && op2 == OP_ADD &&
-            GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
-            int ra = GETARG_A(inst1);
-            int rb = GETARG_B(inst1);
-            int rc = GETARG_C(inst1);
-            int rd = GETARG_C(inst2);
-            f->code[i] = CREATE_ABC(OP_FUSE_GETADD, ra, rb, rc);
-            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, rd);
+
+        /* SUPER_GETTABLE_CALL (nargs=0) */
+        if (op1 == OP_GETTABLE && op2 == OP_CALL && GETARG_A(inst1) == GETARG_A(inst2) && GETARG_B(inst2) == 1) {
+            f->code[i] = CREATE_ABC(OP_SUPER_GETTABLE_CALL, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
             i++; continue;
         }
+
+        /* SUPER_LOADK_SETTABLE */
+        if (op1 == OP_LOADK && op2 == OP_SETTABLE && GETARG_A(inst1) == GETARG_C(inst2)) {
+            f->code[i] = CREATE_ABx(OP_SUPER_LOADK_SETTABLE, GETARG_A(inst2), GETARG_Bx(inst1));
+            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, GETARG_B(inst2));
+            i++; continue;
+        }
+
+        /* FUSE_GETTABUP_ADD */
+        if (op1 == OP_GETTABUP && op2 == OP_ADD && GETARG_A(inst1) == GETARG_A(inst2) && GETARG_A(inst1) == GETARG_B(inst2)) {
+            f->code[i] = CREATE_ABC(OP_FUSE_GETTABUP_ADD, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
+            f->code[i+1] = CREATE_Ax(OP_EXTRAARG, GETARG_C(inst2));
+            i++; continue;
+        }
+
+        /* SUPER_MOVE_MOVE */
+        if (op1 == OP_MOVE && op2 == OP_MOVE && GETARG_A(inst1) + 1 == GETARG_A(inst2)) {
+             f->code[i] = CREATE_ABC(OP_SUPER_MOVE_MOVE, GETARG_A(inst1), GETARG_B(inst1), GETARG_B(inst2));
+             f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
+             i++; continue;
+        }
+
+        /* SUPER_MOVE_LOADK */
+        if (op1 == OP_MOVE && op2 == OP_LOADK && GETARG_A(inst1) + 1 == GETARG_A(inst2)) {
+             f->code[i] = CREATE_ABC(OP_SUPER_MOVE_LOADK, GETARG_A(inst1), GETARG_B(inst1), 0);
+             f->code[i+1] = CREATE_Ax(OP_EXTRAARG, GETARG_Bx(inst2));
+             i++; continue;
+        }
+
+        /* FUSE_GETTABLE_TEST / EQ */
+        if (op1 == OP_GETTABLE && (op2 == OP_TEST || op2 == OP_TESTSET) && GETARG_A(inst1) == GETARG_A(inst2)) {
+            f->code[i] = CREATE_ABC(OP_FUSE_GETTABLE_TEST, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
+            // Keep TEST/TESTSET as next_i
+            i++; continue;
+        }
+        if (i < f->sizecode - 2 && op1 == OP_GETTABLE && op2 == OP_EQ && GET_OPCODE(f->code[i+2]) == OP_JMP) {
+            if (GETARG_A(inst1) == GETARG_B(inst2) || GETARG_A(inst1) == GETARG_C(inst2)) {
+                f->code[i] = CREATE_ABC(OP_FUSE_GETTABLE_EQ, GETARG_A(inst1), GETARG_B(inst1), GETARG_C(inst1));
+                // Keep EQ as next_i
+                i++; continue;
+            }
+        }
+
         /* Pattern 2: Ra = Rb.Rc; Rd = Re.Rf; Ra = Ra - Rd -> Ra = FUSE_GETGETSUB(Rb, Rc, Re, Rf) */
         if (i < f->sizecode - 2) {
             Instruction inst3 = f->code[i+2];
@@ -104,23 +173,18 @@ static void fuse_instructions_internal(Proto *f) {
                 int ra1 = GETARG_A(inst1);
                 int t1 = GETARG_B(inst1);
                 int k1 = GETARG_C(inst1);
-
                 int ra2 = GETARG_A(inst2);
                 int rb2 = GETARG_B(inst2);
                 int rc2 = GETARG_C(inst2);
-
                 int t3 = GETARG_A(inst3);
                 int k3 = GETARG_B(inst3);
                 int rv3 = GETARG_C(inst3);
-
-                /* Case: R[ra1] = t1.k1; R[ra2] = R[ra1] + rc2; t1.k1 = R[ra2] */
                 if (ra1 == rb2 && ra2 == rv3 && t1 == t3 && k1 == k3) {
                     f->code[i] = CREATE_ABC(OP_FUSE_ADD_TO_FIELD, t1, k1, rc2);
                     f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
                     f->code[i+2] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
                     i += 2;
                 }
-                /* Case: R[ra1] = t1.k1; R[ra2] = rb2 + R[ra1]; t1.k1 = R[ra2] */
                 else if (ra1 == rc2 && ra2 == rv3 && t1 == t3 && k1 == k3) {
                     f->code[i] = CREATE_ABC(OP_FUSE_ADD_TO_FIELD, t1, k1, rb2);
                     f->code[i+1] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);
@@ -131,7 +195,7 @@ static void fuse_instructions_internal(Proto *f) {
         }
     }
 
-    /* Pattern 4: PARTICLE_DIST (Corrected match with EXTRAARG) */
+    /* Pattern 4: PARTICLE_DIST */
     if (f->sizecode >= 7) {
         for (int i = 0; i < f->sizecode - 6; i++) {
             Instruction i1 = f->code[i];
@@ -141,10 +205,10 @@ static void fuse_instructions_internal(Proto *f) {
                 if (GETARG_A(i1) == GETARG_B(i7) && GETARG_A(i4) == GETARG_C(i7)) {
                     int ra = GETARG_A(i7);
                     int p1 = GETARG_B(i1);
-                    int p2 = GETARG_Ax(f->code[i+1]); // From EXTRAARG of first FUSE_GETGETSUB
+                    int p2 = (GETARG_Ax(f->code[i+1]) >> 9) & 0x1FF;
                     int kx = GETARG_C(i1);
                     int ky = GETARG_C(i4);
-                    f->code[i] = CREATE_ABC(OP_FUSE_PARTICLE_DIST, ra, (int)(p1 & 0x1FF), (int)(p2 & 0x1FF));
+                    f->code[i] = CREATE_ABC(OP_FUSE_PARTICLE_DIST, ra, p1, p2);
                     f->code[i+1] = CREATE_Ax(OP_EXTRAARG, kx);
                     f->code[i+2] = CREATE_Ax(OP_EXTRAARG, ky);
                     f->code[i+3] = CREATE_ABC(OP_FUSE_NOP, 0, 0, 0);

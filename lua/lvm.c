@@ -850,7 +850,8 @@ void luaV_execute (lua_State *L) {
     &&L_OP_FORPREP, &&L_OP_TFORCALL, &&L_OP_TFORLOOP, &&L_OP_SETLIST, &&L_OP_CLOSURE,
     &&L_OP_VARARG, &&L_OP_EXTRAARG, &&L_OP_TBC, &&L_OP_NEWARRAY, &&L_OP_TFOREACH,
     &&L_OP_TERNARY, &&L_OP_VIRTUAL, &&L_OP_FUSE_GETSUB, &&L_OP_FUSE_GETADD, &&L_OP_FUSE_GETGETSUB, &&L_OP_FAST_DIST, &&L_OP_FUSE_NOP, &&L_OP_FUSE_PARTICLE_DIST,
-    &&L_OP_FUSE_ADD_TO_FIELD, &&L_OP_SUPER_MOVE_LOADK, &&L_OP_SUPER_MOVE_MOVE, &&L_OP_SUPER_GETTABLE_CALL, &&L_OP_FUSE_GETTABLE_TEST, &&L_OP_FUSE_GETTABLE_EQ
+    &&L_OP_FUSE_ADD_TO_FIELD, &&L_OP_SUPER_MOVE_LOADK, &&L_OP_SUPER_MOVE_MOVE, &&L_OP_SUPER_GETTABLE_CALL, &&L_OP_FUSE_GETTABLE_TEST, &&L_OP_FUSE_GETTABLE_EQ,
+    &&L_OP_SUPER_SELF_CALL, &&L_OP_SUPER_LOADK_SETTABLE, &&L_OP_FUSE_GETTABUP_ADD, &&L_OP_INC, &&L_OP_DEC
   };
 #endif
   CallInfo *ci = L->ci;
@@ -1427,53 +1428,100 @@ void luaV_execute (lua_State *L) {
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
 
         /* Math Inlining Fast-Path */
-        if (b == 2 && ttisCclosure(ra)) {
+        if (ttisCclosure(ra)) {
           lua_CFunction f = clCvalue(ra)->f;
           if (f == G(L)->math_abs) {
             TValue *arg = ra + 1;
-            if (ttisinteger(arg)) {
-              lua_Integer res = ivalue(arg);
-              if (res < 0) res = -res;
-              setivalue(ra, res);
-              goto l_call_fast_done;
-            } else if (ttisfloat(arg)) {
-              setfltvalue(ra, l_mathop(fabs)(fltvalue(arg)));
-              goto l_call_fast_done;
+            if (b == 2) {
+              if (ttisinteger(arg)) {
+                lua_Integer res = ivalue(arg);
+                if (res < 0) res = -res;
+                setivalue(ra, res);
+                goto l_call_fast_done;
+              } else if (ttisfloat(arg)) {
+                setfltvalue(ra, l_mathop(fabs)(fltvalue(arg)));
+                goto l_call_fast_done;
+              }
             }
           } else if (f == G(L)->math_sqrt) {
             lua_Number n;
-            if (tonumber(ra + 1, &n)) {
+            if (b == 2 && tonumber(ra + 1, &n)) {
               setfltvalue(ra, l_mathop(sqrt)(n));
               goto l_call_fast_done;
             }
           } else if (f == G(L)->math_floor) {
             TValue *arg = ra + 1;
-            if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
-            else if (ttisfloat(arg)) {
-              lua_Integer res;
-              if (luaV_tointeger(arg, &res, 1)) { setivalue(ra, res); }
-              else { setfltvalue(ra, l_mathop(floor)(fltvalue(arg))); }
-              goto l_call_fast_done;
+            if (b == 2) {
+              if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
+              else if (ttisfloat(arg)) {
+                lua_Integer res;
+                if (luaV_tointeger(arg, &res, 1)) { setivalue(ra, res); }
+                else { setfltvalue(ra, l_mathop(floor)(fltvalue(arg))); }
+                goto l_call_fast_done;
+              }
             }
           } else if (f == G(L)->math_ceil) {
             TValue *arg = ra + 1;
-            if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
-            else if (ttisfloat(arg)) {
-              lua_Integer res;
-              if (luaV_tointeger(arg, &res, 2)) { setivalue(ra, res); }
-              else { setfltvalue(ra, l_mathop(ceil)(fltvalue(arg))); }
-              goto l_call_fast_done;
+            if (b == 2) {
+              if (ttisinteger(arg)) { setobj2s(L, ra, arg); goto l_call_fast_done; }
+              else if (ttisfloat(arg)) {
+                lua_Integer res;
+                if (luaV_tointeger(arg, &res, 2)) { setivalue(ra, res); }
+                else { setfltvalue(ra, l_mathop(ceil)(fltvalue(arg))); }
+                goto l_call_fast_done;
+              }
             }
           } else if (f == G(L)->math_sin) {
             lua_Number n;
-            if (tonumber(ra + 1, &n)) {
+            if (b == 2 && tonumber(ra + 1, &n)) {
               setfltvalue(ra, l_mathop(sin)(n));
               goto l_call_fast_done;
             }
           } else if (f == G(L)->math_cos) {
             lua_Number n;
-            if (tonumber(ra + 1, &n)) {
+            if (b == 2 && tonumber(ra + 1, &n)) {
               setfltvalue(ra, l_mathop(cos)(n));
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_min) {
+            TValue *arg1 = ra + 1;
+            TValue *arg2 = ra + 2;
+            if (b == 3 && ttisnumber(arg1) && ttisnumber(arg2)) {
+              if (luaV_lessthan(L, arg1, arg2)) { setobj2s(L, ra, arg1); }
+              else { setobj2s(L, ra, arg2); }
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_max) {
+            TValue *arg1 = ra + 1;
+            TValue *arg2 = ra + 2;
+            if (b == 3 && ttisnumber(arg1) && ttisnumber(arg2)) {
+              if (luaV_lessthan(L, arg2, arg1)) { setobj2s(L, ra, arg1); }
+              else { setobj2s(L, ra, arg2); }
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->math_type) {
+            TValue *arg = ra + 1;
+            if (b == 2 && ttisnumber(arg)) {
+              if (ttisinteger(arg)) {
+                setsvalue2s(L, ra, luaS_newliteral(L, "integer"));
+              } else {
+                setsvalue2s(L, ra, luaS_newliteral(L, "float"));
+              }
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->str_len) {
+            TValue *arg = ra + 1;
+            if (b == 2 && ttisstring(arg)) {
+              setivalue(ra, tsslen(tsvalue(arg)));
+              goto l_call_fast_done;
+            }
+          } else if (f == G(L)->tab_insert) {
+            if (b == 3 && ttistable(ra + 1)) {
+              Table *t = hvalue(ra + 1);
+              lua_Integer n = luaH_getn(t);
+              luaH_setint(L, t, n + 1, ra + 2);
+              luaC_barrierback(L, t, ra + 2);
+              setnilvalue(ra);
               goto l_call_fast_done;
             }
           }
@@ -1817,7 +1865,9 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_SUPER_MOVE_LOADK) {
         setobjs2s(L, ra, RB(i));
-        TValue *rb = k + GETARG_Bx(i);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        TValue *rb = k + GETARG_Ax(next_i);
         setobj2s(L, ra + 1, rb);
         decrypt_tv(ra + 1);
         vmbreak;
@@ -1830,11 +1880,15 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_SUPER_GETTABLE_CALL) {
         StkId rb = RB(i);
         TValue *rc = RKC(i);
-        /* Simple assumption: SUPER_GETTABLE_CALL R(A), R(B), RK(C)
-           followed by standard CALL logic with nargs=0, nresults=1 or similar */
         gettableProtected(L, rb, rc, ra);
         ra = RA(i);
-        if (luaD_precall(L, ra, 0)) {
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int b = GETARG_B(next_i);
+        int nresults = GETARG_C(next_i) - 1;
+        if (b != 0) L->top = ra + b;
+        if (luaD_precall(L, ra, nresults)) {
+          if (nresults >= 0) L->top = ci->top;
           Protect((void)0);
         } else {
           ci = L->ci;
@@ -1847,8 +1901,12 @@ void luaV_execute (lua_State *L) {
         TValue *rc = RKC(i);
         gettableProtected(L, rb, rc, ra);
         ra = RA(i);
-        if (l_isfalse(ra)) ci->u.l.savedpc++;
-        else donextjump(ci);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        if (GETARG_C(next_i) ? l_isfalse(ra) : !l_isfalse(ra))
+            ci->u.l.savedpc++;
+        else
+            donextjump(ci);
         vmbreak;
       }
       vmcase(OP_FUSE_GETTABLE_EQ) {
@@ -1863,6 +1921,86 @@ void luaV_execute (lua_State *L) {
             ci->u.l.savedpc++;
         else
             donextjump(ci);
+        vmbreak;
+      }
+      vmcase(OP_SUPER_SELF_CALL) {
+        StkId rb = RB(i);
+        TValue *rc = RKC(i);
+        TString *key = tsvalue(rc);
+        setobjs2s(L, ra + 1, rb);
+        const TValue *aux;
+        if (luaV_fastget(L, rb, key, aux, luaH_getstr)) {
+          setobj2s(L, ra, aux);
+        } else {
+          Protect(luaV_finishget(L, rb, rc, ra, aux);)
+        }
+        ra = RA(i);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int b = GETARG_B(next_i);
+        int nresults = GETARG_C(next_i) - 1;
+        if (b != 0) L->top = ra + b;
+        if (luaD_precall(L, ra, nresults)) {
+          if (nresults >= 0) L->top = ci->top;
+          Protect((void)0);
+        } else {
+          ci = L->ci;
+          goto newframe;
+        }
+        vmbreak;
+      }
+      vmcase(OP_SUPER_LOADK_SETTABLE) {
+        TValue *rb = k + GETARG_Bx(i);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int rc_idx = GETARG_Ax(next_i);
+        TValue *rc = ISK(rc_idx) ? (TValue *)get_rk_ptr(k, RKASK(rc_idx), base + cl->p->scratch_base) : base + rc_idx;
+        settableProtected(L, ra, rc, rb);
+        vmbreak;
+      }
+      vmcase(OP_FUSE_GETTABUP_ADD) {
+        TValue *upval = cl->upvals[GETARG_B(i)]->v;
+        TValue *rc = RKC(i);
+        Instruction next_i = *ci->u.l.savedpc++;
+        next_i = DECRYPT_INST(next_i, (int)(ci->u.l.savedpc - cl->p->code - 1), cl->p->inst_seed);
+        int rd_idx = GETARG_Ax(next_i);
+        gettableProtected(L, upval, rc, base + cl->p->scratch_base);
+        ra = RA(i);
+        TValue *v1 = base + cl->p->scratch_base;
+        TValue *v2 = ISK(rd_idx) ? (TValue *)get_rk_ptr(k, RKASK(rd_idx), v1 + 1) : base + rd_idx;
+        if (ttisnumber(v1) && ttisnumber(v2)) {
+          if (ttisinteger(v1) && ttisinteger(v2)) {
+            setivalue(ra, intop(+, ivalue(v1), ivalue(v2)));
+          } else {
+            setfltvalue(ra, luai_numadd(L, nvalue(v1), nvalue(v2)));
+          }
+        } else {
+          Protect(luaO_arith(L, LUA_OPADD, v1, v2, ra);)
+        }
+        vmbreak;
+      }
+      vmcase(OP_INC) {
+        if (ttisinteger(ra)) {
+          ivalue(ra)++;
+        } else if (ttisfloat(ra)) {
+          fltvalue(ra)++;
+        } else {
+          TValue one;
+          setivalue(&one, 1);
+          Protect(luaO_arith(L, LUA_OPADD, ra, &one, ra);)
+        }
+        vmbreak;
+      }
+      vmcase(OP_DEC) {
+        if (ttisinteger(ra)) {
+          ivalue(ra)--;
+        } else if (ttisfloat(ra)) {
+          fltvalue(ra)--;
+        } else {
+          TValue one;
+          setivalue(&one, 1);
+          Protect(luaO_arith(L, LUA_OPSUB, ra, &one, ra);)
+        }
         vmbreak;
       }
 #if !defined(LUA_USE_JUMP_TABLE)

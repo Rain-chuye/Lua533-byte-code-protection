@@ -550,6 +550,7 @@ static lu_mem traverseLclosure (global_State *g, LClosure *cl) {
 
 static lu_mem traversethread (global_State *g, lua_State *th) {
   StkId o = th->stack;
+  CallInfo *ci;
   if (o == NULL)
     return 1;  /* stack not completely built yet */
   lua_assert(g->gcstate == GCSinsideatomic ||

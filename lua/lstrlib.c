@@ -6,6 +6,7 @@
 
 #define lstrlib_c
 #define LUA_LIB
+#define LUA_CORE
 
 #include "lprefix.h"
 
@@ -25,6 +26,7 @@
 
 #include "lauxlib.h"
 #include "lualib.h"
+#include "lstate.h"
 
 
 
@@ -1873,5 +1875,7 @@ static void createmetatable (lua_State *L) {
 LUAMOD_API int luaopen_string (lua_State *L) {
   luaL_newlib(L, strlib);
   createmetatable(L);
+  G(L)->str_len = str_len;
+  G(L)->str_sub = str_sub;
   return 1;
 }

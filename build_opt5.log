@@ -1,0 +1,899 @@
+make all SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lreadline"
+make[1]: Entering directory '/app/lua'
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lapi.o lapi.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lcode.o lcode.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lctype.o lctype.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ldebug.o ldebug.c
+In file included from lua.h:16,
+                 from lctype.h:10,
+                 from lctype.c:13:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua.h:16,
+                 from ldebug.c:17:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua.h:16,
+                 from lapi.c:16:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua.h:16,
+                 from lcode.c:16:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ldo.o ldo.c
+lapi.c: In function ‘lua_gc’:
+lapi.c:1165:11: warning: unused variable ‘stepsize’ [-Wunused-variable]
+ 1165 |       int stepsize = va_arg(argp, int);
+      |           ^~~~~~~~
+In file included from lua.h:16,
+                 from ldo.c:18:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from ldo.c:21:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ldump.o ldump.c
+In file included from lua.h:16,
+                 from ldump.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+ldump.c: In function ‘DumpFunction’:
+ldump.c:189:52: warning: unused parameter ‘psource’ [-Wunused-parameter]
+  189 | static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
+      |                                           ~~~~~~~~~^~~~~~~
+In file included from ldump.c:17:
+lobfuscator.h: At top level:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lfunc.o lfunc.c
+In file included from lua.h:16,
+                 from lfunc.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lfunc.c: In function ‘callclosemth’:
+lfunc.c:116:70: warning: unused parameter ‘status’ [-Wunused-parameter]
+  116 | static void callclosemth (lua_State *L, TValue *uv, StkId level, int status) {
+      |                                                                  ~~~~^~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lgc.o lgc.c
+In file included from lfunc.c:22:
+lobfuscator.h: At top level:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+In file included from lua.h:16,
+                 from lgc.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o llex.o llex.c
+In file included from lua.h:16,
+                 from llex.c:16:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lmem.o lmem.c
+In file included from lua.h:16,
+                 from lmem.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lobject.o lobject.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lopcodes.o lopcodes.c
+In file included from lua.h:16,
+                 from llimits.h:15,
+                 from lopcodes.h:10,
+                 from lopcodes.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lopcodes.c:86:3: warning: excess elements in array initializer
+   86 |   "FUSE_GETTABLE_SUB",
+      |   ^~~~~~~~~~~~~~~~~~~
+lopcodes.c:86:3: note: (near initialization for ‘luaP_opnames’)
+lopcodes.c:87:3: warning: excess elements in array initializer
+   87 |   "FUSE_GETTABLE_MUL",
+      |   ^~~~~~~~~~~~~~~~~~~
+lopcodes.c:87:3: note: (near initialization for ‘luaP_opnames’)
+lopcodes.c:88:3: warning: excess elements in array initializer
+   88 |   "FUSE_GETTABUP_GETTABLE",
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~
+lopcodes.c:88:3: note: (near initialization for ‘luaP_opnames’)
+lopcodes.c:89:3: warning: excess elements in array initializer
+   89 |   NULL
+      |   ^~~~
+lopcodes.c:89:3: note: (near initialization for ‘luaP_opnames’)
+lopcodes.c:93:27: warning: excess elements in array initializer
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:161:3: note: in expansion of macro ‘opmode’
+  161 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_ADD */
+      |   ^~~~~~
+lopcodes.c:93:27: note: (near initialization for ‘luaP_opmodes’)
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:161:3: note: in expansion of macro ‘opmode’
+  161 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_ADD */
+      |   ^~~~~~
+lopcodes.c:93:27: warning: excess elements in array initializer
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:162:3: note: in expansion of macro ‘opmode’
+  162 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_SUB */
+      |   ^~~~~~
+lopcodes.c:93:27: note: (near initialization for ‘luaP_opmodes’)
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:162:3: note: in expansion of macro ‘opmode’
+  162 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_SUB */
+      |   ^~~~~~
+lopcodes.c:93:27: warning: excess elements in array initializer
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:163:3: note: in expansion of macro ‘opmode’
+  163 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_MUL */
+      |   ^~~~~~
+lopcodes.c:93:27: note: (near initialization for ‘luaP_opmodes’)
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:163:3: note: in expansion of macro ‘opmode’
+  163 |  ,opmode(0, 1, OpArgR, OpArgK, iABC)            /* OP_FUSE_GETTABLE_MUL */
+      |   ^~~~~~
+lopcodes.c:93:27: warning: excess elements in array initializer
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:164:3: note: in expansion of macro ‘opmode’
+  164 |  ,opmode(0, 1, OpArgU, OpArgK, iABC)            /* OP_FUSE_GETTABUP_GETTABLE */
+      |   ^~~~~~
+lopcodes.c:93:27: note: (near initialization for ‘luaP_opmodes’)
+   93 | #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
+      |                           ^
+lopcodes.c:164:3: note: in expansion of macro ‘opmode’
+  164 |  ,opmode(0, 1, OpArgU, OpArgK, iABC)            /* OP_FUSE_GETTABUP_GETTABLE */
+      |   ^~~~~~
+In file included from lua.h:16,
+                 from lobject.c:20:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lparser.o lparser.c
+In file included from lua.h:16,
+                 from llimits.h:15,
+                 from lobfuscator.h:4,
+                 from lparser.c:14:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lparser.c: In function ‘single_test_then_block’:
+lparser.c:1819:7: warning: unused variable ‘target’ [-Wunused-variable]
+ 1819 |   int target = NO_JUMP;
+      |       ^~~~~~
+lparser.c:1818:12: warning: unused variable ‘jlb’ [-Wunused-variable]
+ 1818 |   TString *jlb = NULL;
+      |            ^~~
+lparser.c:1816:7: warning: variable ‘line’ set but not used [-Wunused-but-set-variable]
+ 1816 |   int line;
+      |       ^~~~
+lparser.c: In function ‘single_ifstat’:
+lparser.c:1854:46: warning: unused parameter ‘line’ [-Wunused-parameter]
+ 1854 | static void single_ifstat (LexState *ls, int line) {
+      |                                          ~~~~^~~~
+lparser.c: In function ‘whenstat’:
+lparser.c:1864:41: warning: unused parameter ‘line’ [-Wunused-parameter]
+ 1864 | static void whenstat (LexState *ls, int line) {
+      |                                     ~~~~^~~~
+lparser.c: At top level:
+lparser.c:1641:13: warning: ‘foreachbody’ defined but not used [-Wunused-function]
+ 1641 | static void foreachbody (LexState *ls, int base, int line, int nvars) {
+      |             ^~~~~~~~~~~
+lparser.c:144:13: warning: ‘ichecknext2’ defined but not used [-Wunused-function]
+  144 | static void ichecknext2 (LexState *ls, int c1, int c2) {
+      |             ^~~~~~~~~~~
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lstate.o lstate.c
+In file included from lua.h:16,
+                 from lstate.c:16:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lstate.c:29:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lstring.o lstring.c
+In file included from lua.h:16,
+                 from lstring.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ltable.o ltable.c
+In file included from lua.h:16,
+                 from ltable.c:29:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ltm.o ltm.c
+In file included from lua.h:16,
+                 from ltm.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lundump.o lundump.c
+In file included from lua.h:16,
+                 from lundump.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lundump.c:17:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lvm.o lvm.c
+In file included from lua.h:16,
+                 from lvm.c:19:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lvm.c: In function ‘luaV_execute’:
+lvm.c:854:5: warning: excess elements in array initializer
+  854 |     &&L_OP_FUSE_GETTABLE_ADD, &&L_OP_FUSE_GETTABLE_SUB, &&L_OP_FUSE_GETTABLE_MUL,
+      |     ^~
+lvm.c:854:5: note: (near initialization for ‘jump_table’)
+lvm.c:854:31: warning: excess elements in array initializer
+  854 |     &&L_OP_FUSE_GETTABLE_ADD, &&L_OP_FUSE_GETTABLE_SUB, &&L_OP_FUSE_GETTABLE_MUL,
+      |                               ^~
+lvm.c:854:31: note: (near initialization for ‘jump_table’)
+lvm.c:854:57: warning: excess elements in array initializer
+  854 |     &&L_OP_FUSE_GETTABLE_ADD, &&L_OP_FUSE_GETTABLE_SUB, &&L_OP_FUSE_GETTABLE_MUL,
+      |                                                         ^~
+lvm.c:854:57: note: (near initialization for ‘jump_table’)
+lvm.c:855:5: warning: excess elements in array initializer
+  855 |     &&L_OP_FUSE_GETTABUP_GETTABLE
+      |     ^~
+lvm.c:855:5: note: (near initialization for ‘jump_table’)
+In file included from lobject.h:15,
+                 from lstate.h:12,
+                 from ldebug.h:11,
+                 from lvm.c:21:
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:939:22: note: in expansion of macro ‘RKC’
+  939 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:969:22: note: in expansion of macro ‘RKC’
+  969 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:994:22: note: in expansion of macro ‘RKB’
+  994 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:995:22: note: in expansion of macro ‘RKC’
+  995 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1039:22: note: in expansion of macro ‘RKB’
+ 1039 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1040:22: note: in expansion of macro ‘RKC’
+ 1040 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1097:22: note: in expansion of macro ‘RKC’
+ 1097 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1107:22: note: in expansion of macro ‘RKB’
+ 1107 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1108:22: note: in expansion of macro ‘RKC’
+ 1108 |         TValue *rc = RKC(i);
+      |                      ^~~
+lvm.c:1137:28: warning: unused variable ‘v4’ [-Wunused-variable]
+ 1137 |         TValue v1, v2, v3, v4;
+      |                            ^~
+lvm.c:1137:24: warning: unused variable ‘v3’ [-Wunused-variable]
+ 1137 |         TValue v1, v2, v3, v4;
+      |                        ^~
+lvm.c:1137:20: warning: unused variable ‘v2’ [-Wunused-variable]
+ 1137 |         TValue v1, v2, v3, v4;
+      |                    ^~
+lvm.c:1137:16: warning: unused variable ‘v1’ [-Wunused-variable]
+ 1137 |         TValue v1, v2, v3, v4;
+      |                ^~
+lvm.c:1168:26: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1168 |         TValue *rk_key = get_rk_ptr(k, GETARG_B(i), base + cl->p->scratch_base);
+      |                          ^~~~~~~~~~
+lvm.c:1169:26: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1169 |         TValue *rk_val = get_rk_ptr(k, GETARG_C(i), base + cl->p->scratch_base + 1);
+      |                          ^~~~~~~~~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1207:22: note: in expansion of macro ‘RKB’
+ 1207 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1208:22: note: in expansion of macro ‘RKC’
+ 1208 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1222:22: note: in expansion of macro ‘RKB’
+ 1222 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1223:22: note: in expansion of macro ‘RKC’
+ 1223 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1237:22: note: in expansion of macro ‘RKB’
+ 1237 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1238:22: note: in expansion of macro ‘RKC’
+ 1238 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1247:22: note: in expansion of macro ‘RKB’
+ 1247 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1248:22: note: in expansion of macro ‘RKC’
+ 1248 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1257:22: note: in expansion of macro ‘RKB’
+ 1257 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1258:22: note: in expansion of macro ‘RKC’
+ 1258 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1267:22: note: in expansion of macro ‘RKB’
+ 1267 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1268:22: note: in expansion of macro ‘RKC’
+ 1268 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1277:22: note: in expansion of macro ‘RKB’
+ 1277 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1278:22: note: in expansion of macro ‘RKC’
+ 1278 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1287:22: note: in expansion of macro ‘RKB’
+ 1287 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1288:22: note: in expansion of macro ‘RKC’
+ 1288 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1297:22: note: in expansion of macro ‘RKB’
+ 1297 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1298:22: note: in expansion of macro ‘RKC’
+ 1298 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1313:22: note: in expansion of macro ‘RKB’
+ 1313 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1314:22: note: in expansion of macro ‘RKC’
+ 1314 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1327:22: note: in expansion of macro ‘RKB’
+ 1327 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1328:22: note: in expansion of macro ‘RKC’
+ 1328 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1390:22: note: in expansion of macro ‘RKB’
+ 1390 |         TValue *rb = RKB(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1391:22: note: in expansion of macro ‘RKC’
+ 1391 |         TValue *rc = RKC(i);
+      |                      ^~~
+In file included from lvm.c:26:
+lopcodes.h:137:25: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  137 | #define ISK(x)          ((x) & BITRK)
+      |                         ^
+lvm.c:1795:26: note: in expansion of macro ‘ISK’
+ 1795 |         TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+      |                          ^~~
+lopcodes.h:137:25: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  137 | #define ISK(x)          ((x) & BITRK)
+      |                         ^
+lvm.c:1816:26: note: in expansion of macro ‘ISK’
+ 1816 |         TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(k, RKASK(rd_idx), v_res + 1) : base + rd_idx;
+      |                          ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1890:22: note: in expansion of macro ‘RKC’
+ 1890 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1909:22: note: in expansion of macro ‘RKC’
+ 1909 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1918:22: note: in expansion of macro ‘RKC’
+ 1918 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:756:17: note: in expansion of macro ‘check_exp’
+  756 | #define RKB(i)  check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1923:22: note: in expansion of macro ‘RKB’
+ 1923 |         TValue *rd = RKB(next_i);
+      |                      ^~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lzio.o lzio.c
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1932:22: note: in expansion of macro ‘RKC’
+ 1932 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1953:22: note: in expansion of macro ‘RKC’
+ 1953 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1974:22: note: in expansion of macro ‘RKC’
+ 1974 |         TValue *rc = RKC(i);
+      |                      ^~~
+llimits.h:90:33: warning: initialization discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   90 | #define check_exp(c,e)          (e)
+      |                                 ^
+lvm.c:758:17: note: in expansion of macro ‘check_exp’
+  758 | #define RKC(i)  check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
+      |                 ^~~~~~~~~
+lvm.c:1995:22: note: in expansion of macro ‘RKC’
+ 1995 |         TValue *rc = RKC(i);
+      |                      ^~~
+In file included from lua.h:16,
+                 from lzio.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lobfuscator.o lobfuscator.c
+In file included from lua.h:16,
+                 from llimits.h:15,
+                 from lobfuscator.h:4,
+                 from lobfuscator.c:1:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lvm.c:32:
+lobfuscator.h: At top level:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.c: In function ‘obfuscate_proto’:
+lobfuscator.c:267:25: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+  267 |     if (f->maxstacksize > 255) f->maxstacksize = 255;
+      |                         ^
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lauxlib.o lauxlib.c
+lobfuscator.h: At top level:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+In file included from lua.h:16,
+                 from lauxlib.c:26:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lauxlib.c: In function ‘luaL_chuye_decode_and_decrypt’:
+lauxlib.c:338:68: warning: unused parameter ‘L’ [-Wunused-parameter]
+  338 | LUALIB_API unsigned char *luaL_chuye_decode_and_decrypt(lua_State *L, const char *src, size_t len, size_t *outlen) {
+      |                                                         ~~~~~~~~~~~^
+lauxlib.c: In function ‘luaL_pushmodule’:
+lauxlib.c:1260:38: warning: unused parameter ‘sizehint’ [-Wunused-parameter]
+ 1260 |                                  int sizehint) {
+      |                                  ~~~~^~~~~~~~
+lauxlib.c: At top level:
+lauxlib.c:1050:20: warning: ‘read_all’ defined but not used [-Wunused-function]
+ 1050 | static const char *read_all (lua_State *L, FILE *f, size_t *len) {
+      |                    ^~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lbaselib.o lbaselib.c
+In file included from lua.h:16,
+                 from lbaselib.c:18:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lbaselib.c: In function ‘noop’:
+lbaselib.c:451:29: warning: unused parameter ‘L’ [-Wunused-parameter]
+  451 | static int noop (lua_State *L) { return 0; }
+      |                  ~~~~~~~~~~~^
+In file included from lbaselib.c:23:
+lobfuscator.h: At top level:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lbitlib.o lbitlib.c
+In file included from lua.h:16,
+                 from lbitlib.c:13:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lcorolib.o lcorolib.c
+In file included from lua.h:16,
+                 from lcorolib.c:15:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ldblib.o ldblib.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o liolib.o liolib.c
+In file included from lua.h:16,
+                 from ldblib.c:17:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+ldblib.c: In function ‘db_setfenv’:
+ldblib.c:260:17: warning: unused variable ‘name’ [-Wunused-variable]
+  260 |     const char *name;
+      |                 ^~~~
+In file included from lua.h:16,
+                 from liolib.c:24:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lmathlib.o lmathlib.c
+In file included from lua.h:16,
+                 from lmathlib.c:19:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o loslib.o loslib.c
+In file included from lua.h:16,
+                 from loslib.c:26:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lstrlib.o lstrlib.c
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o ltablib.o ltablib.c
+In file included from lua.h:16,
+                 from lstrlib.c:25:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+In file included from lua.h:16,
+                 from ltablib.c:17:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lutf8lib.o lutf8lib.c
+In file included from lua.h:16,
+                 from lutf8lib.c:3:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+lutf8lib.c: In function ‘match’:
+lutf8lib.c:959:17: warning: this statement may fall through [-Wimplicit-fallthrough=]
+  959 |               s = next_s;  /* 1 match already done */
+      |               ~~^~~~~~~~
+lutf8lib.c:961:13: note: here
+  961 |             case '*':  /* 0 or more repetitions */
+      |             ^~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o loadlib.o loadlib.c
+In file included from lua.h:16,
+                 from loadlib.c:21:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+loadlib.c:595:13: warning: ‘set_env’ defined but not used [-Wunused-function]
+  595 | static void set_env (lua_State *L) {
+      |             ^~~~~~~
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o linit.o linit.c
+In file included from lua.h:16,
+                 from linit.c:32:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o lua.o lua.c
+In file included from lua.h:16,
+                 from lua.c:17:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+gcc -std=gnu99 -O3 -Wall -Wextra -DLUA_COMPAT_5_2 -DLUA_USE_LINUX -DLUA_USE_JUMP_TABLE -O3 -ffast-math   -c -o luac.o luac.c
+In file included from lua.h:16,
+                 from luac.c:18:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
+luac.c:161:12: warning: ‘writer’ defined but not used [-Wunused-function]
+  161 | static int writer(lua_State* L, const void* p, size_t size, void* u)
+      |            ^~~~~~
+In file included from luac.c:21:
+lobfuscator.h:59:19: warning: ‘encrypt_float_obf’ defined but not used [-Wunused-function]
+   59 | static lua_Number encrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+lobfuscator.h:52:19: warning: ‘decrypt_float_obf’ defined but not used [-Wunused-function]
+   52 | static lua_Number decrypt_float_obf(lua_Number n) {
+      |                   ^~~~~~~~~~~~~~~~~
+ar rcu liblua.a lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o lundump.o lvm.o lzio.o lobfuscator.o lauxlib.o lbaselib.o lbitlib.o lcorolib.o ldblib.o liolib.o lmathlib.o loslib.o lstrlib.o ltablib.o lutf8lib.o loadlib.o linit.o
+ar: `u' modifier ignored since `D' is the default (see `U')
+ranlib liblua.a
+gcc -std=gnu99 -o lua   lua.o liblua.a -lm -Wl,-E -ldl -lreadline
+gcc -std=gnu99 -o luac   luac.o liblua.a -lm -Wl,-E -ldl -lreadline
+make[1]: Leaving directory '/app/lua'

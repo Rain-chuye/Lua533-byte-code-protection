@@ -161,6 +161,13 @@ typedef struct global_State {
   lua_CFunction math_ceil;
   lua_CFunction math_sin;
   lua_CFunction math_cos;
+  lua_CFunction math_min;
+  lua_CFunction math_max;
+  lua_CFunction math_type;
+  lua_CFunction str_len;
+  lua_CFunction str_sub;
+  lua_CFunction tab_insert;
+  lua_CFunction tab_remove;
   int genminormul;
   int genmajormul;
   int gcstopem;
