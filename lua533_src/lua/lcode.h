@@ -32,7 +32,9 @@ typedef enum BinOpr {
   OPR_CONCAT,
   OPR_EQ, OPR_LT, OPR_LE,
   OPR_NE, OPR_GT, OPR_GE,
-  OPR_AND, OPR_OR,
+  OPR_AND, OPR_OR, OPR_NULLCOAL,
+  OPR_PIPE, OPR_BPIPE, OPR_SPIPE,
+  OPR_SPACESHIP,
   OPR_NOBINOPR
 } BinOpr;
 
@@ -69,6 +71,8 @@ LUAI_FUNC void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
 LUAI_FUNC void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k);
 LUAI_FUNC void luaK_goiftrue (FuncState *fs, expdesc *e);
 LUAI_FUNC void luaK_goiffalse (FuncState *fs, expdesc *e);
+LUAI_FUNC void luaK_goifnotnil (FuncState *fs, expdesc *e);
+LUAI_FUNC int jumponnil (FuncState *fs, expdesc *e, int cond);
 LUAI_FUNC void luaK_storevar (FuncState *fs, expdesc *var, expdesc *e);
 LUAI_FUNC void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
 LUAI_FUNC void luaK_setoneret (FuncState *fs, expdesc *e);

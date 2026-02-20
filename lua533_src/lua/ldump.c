@@ -14,9 +14,32 @@
 
 #include "lua.h"
 
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "lobject.h"
 #include "lstate.h"
 #include "lundump.h"
+#include "lopcodes.h"
+#include "sha256.h"
+
+
+static uint32_t my_rand(uint32_t *seed) {
+    *seed = *seed * 1103515245 + 12345;
+    return (*seed / 65536) % 32768;
+}
+
+static void shuffle_opcodes(int *map, uint32_t seed) {
+    int i;
+    uint32_t rseed = seed;
+    for (i = 0; i < NUM_OPCODES; i++) map[i] = i;
+    for (i = NUM_OPCODES - 1; i > 0; i--) {
+        int j = my_rand(&rseed) % (i + 1);
+        int temp = map[i];
+        map[i] = map[j];
+        map[j] = temp;
+    }
+}
 
 
 typedef struct {
@@ -25,6 +48,9 @@ typedef struct {
     void *data;
     int strip;
     int status;
+    uint32_t timestamp;
+    SHA256_CTX sha256;
+    int secure;
 } DumpState;
 
 
@@ -39,9 +65,22 @@ typedef struct {
 
 static void DumpBlock (const void *b, size_t size, DumpState *D) {
   if (D->status == 0 && size > 0) {
-    lua_unlock(D->L);
-    D->status = (*D->writer)(D->L, b, size, D->data);
-    lua_lock(D->L);
+    if (D->secure) {
+        uint8_t *buf = (uint8_t*)malloc(size);
+        memcpy(buf, b, size);
+        for (size_t i = 0; i < size; i++) {
+            buf[i] ^= (D->timestamp >> ((i % 4) * 8)) & 0xFF;
+        }
+        sha256_update(&D->sha256, buf, size);
+        lua_unlock(D->L);
+        D->status = (*D->writer)(D->L, buf, size, D->data);
+        lua_lock(D->L);
+        free(buf);
+    } else {
+        lua_unlock(D->L);
+        D->status = (*D->writer)(D->L, b, size, D->data);
+        lua_lock(D->L);
+    }
   }
 }
 
@@ -89,7 +128,21 @@ static void DumpString (const TString *s, DumpState *D) {
 
 static void DumpCode (const Proto *f, DumpState *D) {
   DumpInt(f->sizecode, D);
-  DumpVector(f->code, f->sizecode, D);
+  if (D->secure) {
+      int map[NUM_OPCODES];
+      shuffle_opcodes(map, D->timestamp);
+      Instruction *code = (Instruction*)malloc(f->sizecode * sizeof(Instruction));
+      for (int i = 0; i < f->sizecode; i++) {
+          OpCode op = GET_OPCODE(f->code[i]);
+          Instruction inst = f->code[i];
+          SET_OPCODE(inst, map[op]);
+          code[i] = inst;
+      }
+      DumpVector(code, f->sizecode, D);
+      free(code);
+  } else {
+      DumpVector(f->code, f->sizecode, D);
+  }
 }
 
 static void DumpFunction(const Proto *f, TString *psource, DumpState *D);
@@ -193,6 +246,11 @@ static void DumpHeader (DumpState *D) {
   DumpByte(sizeof(lua_Number), D);
   DumpInteger(LUAC_INT, D);
   DumpNumber(LUAC_NUM, D);
+
+  /* Security Header */
+  D->timestamp = (uint32_t)time(NULL);
+  D->secure = 0;
+  DumpInt(D->timestamp, D);
 }
 
 
@@ -202,13 +260,24 @@ static void DumpHeader (DumpState *D) {
 int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
               int strip) {
   DumpState D;
+  uint8_t hash[32];
   D.L = L;
   D.writer = w;
   D.data = data;
   D.strip = strip;
   D.status = 0;
+  D.secure = 0;
+  sha256_init(&D.sha256);
+
   DumpHeader(&D);
+
+  D.secure = 1; /* Start encrypting and hashing from here */
   DumpByte(f->sizeupvalues, &D);
   DumpFunction(f, NULL, &D);
+
+  D.secure = 0;
+  sha256_final(&D.sha256, hash);
+  DumpBlock(hash, 32, &D);
+
   return D.status;
 }

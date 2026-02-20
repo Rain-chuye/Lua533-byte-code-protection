@@ -29,19 +29,30 @@ enum RESERVED {
   TK_DO, TK_ELSE, TK_ELSEIF, TK_END, TK_FALSE, TK_FOR, TK_FUNCTION,
   TK_GOTO, TK_IF, TK_IN, TK_LAMBDA, TK_LOCAL, TK_NIL, TK_NOT, TK_OR, TK_REPEAT,
   TK_RETURN, TK_SWITCH, TK_THEN, TK_TRUE, TK_UNTIL, TK_WHEN, TK_WHILE,
+  TK_TRY, TK_CATCH, TK_FINALLY,
+  TK_CLASS, TK_EXTENDS, TK_IMPLEMENTS,
+  TK_PUBLIC, TK_PRIVATE, TK_PROTECTED, TK_STATIC, TK_ABSTRACT, TK_FINAL, TK_SEALED,
+  TK_GET, TK_SET, TK_NEW, TK_SUPER,
+  TK_ASYNC, TK_AWAIT,
+  TK_NAMESPACE, TK_USING,
+  TK_STRUCT, TK_ENUM,
+  TK_ASM,
+  TK_INT_K, TK_FLOAT_K, TK_BOOL_K, TK_STRING_K, TK_VOID_K, TK_CHAR_K, TK_LONG_K,
   /* other terminal symbols */
   TK_IDIV, TK_CONCAT, TK_DOTS, TK_EQ, TK_GE, TK_LE, TK_NE,
   TK_SHL, TK_SHR,
   TK_PLUSEQ, TK_MINUSEQ, TK_MULTEQ, TK_DIVEQ, TK_IDIVEQ, TK_MODEQ,
-  TK_ANDEQ, TK_OREQ, TK_XOREQ, TK_SHLEQ, TK_SHREQ, TK_CONCATEQ,
+  TK_ANDEQ, TK_OREQ, TK_XOREQ, TK_SHLEQ, TK_SHREQ, TK_CONCATEQ, TK_INTERP_BEG, TK_INTERP_MID, TK_INTERP_END,
   TK_INC,
-  TK_DBCOLON, TK_EOS,
-  TK_LET, TK_MEAN,
+  TK_NULLCOAL, TK_OPTDOT,
+  TK_PIPE, TK_BPIPE, TK_SPIPE,
+  TK_SPACESHIP,
+  TK_DBCOLON, TK_LET, TK_MEAN, TK_EOS,
   TK_FLT, TK_INT, TK_NAME, TK_STRING
 };
 
 /* number of reserved words */
-#define NUM_RESERVED	(cast(int, TK_WHILE-FIRST_RESERVED+1))
+#define NUM_RESERVED	(cast(int, TK_LONG_K-FIRST_RESERVED+1))
 
 
 typedef union {
@@ -66,6 +77,7 @@ typedef struct LexState {
   Token t;  /* current token */
   Token lookahead;  /* look ahead token */
   Token lookahead2; /* second look ahead token */
+  Token lookahead3;
   struct FuncState *fs;  /* current function (parser) */
   struct lua_State *L;
   ZIO *z;  /* input stream */
@@ -74,6 +86,11 @@ typedef struct LexState {
   struct Dyndata *dyd;  /* dynamic structures used by the parser */
   TString *source;  /* current source name */
   TString *envn;  /* environment variable name */
+  int interp_level;
+  int brace_levels[8];
+  int interp_delim[8];
+  struct Table *macros;
+  int skip_level;
 } LexState;
 
 
@@ -84,6 +101,7 @@ LUAI_FUNC TString *luaX_newstring (LexState *ls, const char *str, size_t l);
 LUAI_FUNC void luaX_next (LexState *ls);
 LUAI_FUNC int luaX_lookahead (LexState *ls);
 LUAI_FUNC int luaX_lookahead2 (LexState *ls);
+LUAI_FUNC int luaX_lookahead3 (LexState *ls);
 LUAI_FUNC l_noret luaX_syntaxerror (LexState *ls, const char *s);
 LUAI_FUNC const char *luaX_token2str (LexState *ls, int token);
 

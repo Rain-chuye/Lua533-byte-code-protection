@@ -54,6 +54,9 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "LE",
   "TEST",
   "TESTSET",
+  "TESTNIL",
+  "TESTNILSET",
+  "SPACESHIP",
   "CALL",
   "TAILCALL",
   "RETURN",
@@ -112,6 +115,9 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(1, 0, OpArgK, OpArgK, iABC)		/* OP_LE */
  ,opmode(1, 0, OpArgN, OpArgU, iABC)		/* OP_TEST */
  ,opmode(1, 1, OpArgR, OpArgU, iABC)		/* OP_TESTSET */
+ ,opmode(1, 0, OpArgN, OpArgU, iABC)		/* OP_TESTNIL */
+ ,opmode(1, 1, OpArgR, OpArgU, iABC)		/* OP_TESTNILSET */
+ ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_SPACESHIP */
  ,opmode(0, 1, OpArgU, OpArgU, iABC)		/* OP_CALL */
  ,opmode(0, 1, OpArgU, OpArgU, iABC)		/* OP_TAILCALL */
  ,opmode(0, 0, OpArgU, OpArgN, iABC)		/* OP_RETURN */

@@ -44,6 +44,18 @@ void luaZ_init (lua_State *L, ZIO *z, lua_Reader reader, void *data) {
 }
 
 
+int luaZ_lookahead (ZIO *z) {
+  if (z->n == 0) {
+    int c = luaZ_fill(z);
+    if (c == EOZ) return EOZ;
+    z->n++;
+    z->p--;
+    return c;
+  }
+  return cast_uchar(*z->p);
+}
+
+
 /* --------------------------------------------------------------- read --- */
 size_t luaZ_read (ZIO *z, void *b, size_t n) {
   while (n) {

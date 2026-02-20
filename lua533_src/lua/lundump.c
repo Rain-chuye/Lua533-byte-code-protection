@@ -21,7 +21,29 @@
 #include "lobject.h"
 #include "lstring.h"
 #include "lundump.h"
+#include "lopcodes.h"
 #include "lzio.h"
+#include "sha256.h"
+
+
+static uint32_t my_rand(uint32_t *seed) {
+    *seed = *seed * 1103515245 + 12345;
+    return (*seed / 65536) % 32768;
+}
+
+static void unshuffle_opcodes(int *map, uint32_t seed) {
+    int i;
+    int temp_map[NUM_OPCODES];
+    uint32_t rseed = seed;
+    for (i = 0; i < NUM_OPCODES; i++) temp_map[i] = i;
+    for (i = NUM_OPCODES - 1; i > 0; i--) {
+        int j = my_rand(&rseed) % (i + 1);
+        int temp = temp_map[i];
+        temp_map[i] = temp_map[j];
+        temp_map[j] = temp;
+    }
+    for (i = 0; i < NUM_OPCODES; i++) map[temp_map[i]] = i;
+}
 
 
 #if !defined(luai_verifycode)
@@ -33,6 +55,9 @@ typedef struct {
     lua_State *L;
     ZIO *Z;
     const char *name;
+    uint32_t timestamp;
+    SHA256_CTX sha256;
+    int secure;
 } LoadState;
 
 
@@ -51,6 +76,12 @@ static l_noret error(LoadState *S, const char *why) {
 static void LoadBlock (LoadState *S, void *b, size_t size) {
   if (luaZ_read(S->Z, b, size) != 0)
     error(S, "truncated");
+  if (S->secure) {
+    sha256_update(&S->sha256, (uint8_t*)b, size);
+    for (size_t i = 0; i < size; i++) {
+        ((uint8_t*)b)[i] ^= (S->timestamp >> ((i % 4) * 8)) & 0xFF;
+    }
+  }
 }
 
 
@@ -111,6 +142,14 @@ static void LoadCode (LoadState *S, Proto *f) {
   f->code = luaM_newvector(S->L, n, Instruction);
   f->sizecode = n;
   LoadVector(S, f->code, n);
+  if (S->secure) {
+      int map[NUM_OPCODES];
+      unshuffle_opcodes(map, S->timestamp);
+      for (int i = 0; i < n; i++) {
+          OpCode op = GET_OPCODE(f->code[i]);
+          SET_OPCODE(f->code[i], map[op]);
+      }
+  }
 }
 
 
@@ -253,6 +292,8 @@ static void checkHeader (LoadState *S) {
     error(S, "endianness mismatch in");
   if (LoadNumber(S) != LUAC_NUM)
     error(S, "float format mismatch in");
+
+  S->timestamp = LoadInt(S);
 }
 
 
@@ -262,6 +303,8 @@ static void checkHeader (LoadState *S) {
 LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
   LoadState S;
   LClosure *cl;
+  uint8_t hash[32], saved_hash[32];
+
   if (*name == '@' || *name == '=')
     S.name = name + 1;
   else if (*name == LUA_SIGNATURE[0])
@@ -270,12 +313,27 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
     S.name = name;
   S.L = L;
   S.Z = Z;
+  S.secure = 0;
+  sha256_init(&S.sha256);
+
   checkHeader(&S);
+
+  S.secure = 1;
   cl = luaF_newLclosure(L, LoadByte(&S));
   setclLvalue(L, L->top, cl);
   luaD_inctop(L);
   cl->p = luaF_newproto(L);
   LoadFunction(&S, cl->p, NULL);
+
+  S.secure = 0;
+  sha256_final(&S.sha256, hash);
+  LoadBlock(&S, saved_hash, 32);
+
+  if (memcmp(hash, saved_hash, 32) != 0) {
+    //printf("Hash mismatch!\n");
+    error(&S, "integrity check failed (SHA-256 mismatch)");
+  }
+
   lua_assert(cl->nupvalues == cl->p->sizeupvalues);
   luai_verifycode(L, buff, cl->p);
   return cl;

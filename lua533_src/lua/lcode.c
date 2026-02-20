@@ -672,7 +672,7 @@ static int need_value (FuncState *fs, int list) {
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
-void luaK_exp2reg (FuncState *fs, expdesc *e, int reg) {
+static void exp2reg (FuncState *fs, expdesc *e, int reg) {
   discharge2reg(fs, e, reg);
   if (e->k == VJMP)  /* expression itself is a test? */
     luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
@@ -700,11 +700,25 @@ void luaK_exp2reg (FuncState *fs, expdesc *e, int reg) {
 ** Ensures final expression result (including results from its jump
 ** lists) is in next available register.
 */
+void luaK_exp2reg (FuncState *fs, expdesc *e, int reg) {
+  exp2reg(fs, e, reg);
+  luaK_dischargevars(fs, e);
+}
+
+
 void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
   luaK_dischargevars(fs, e);
   freeexp(fs, e);
   luaK_reserveregs(fs, 1);
-  luaK_exp2reg(fs, e, fs->freereg - 1);
+  exp2reg(fs, e, fs->freereg - 1);
+}
+
+
+int jumponnil (FuncState *fs, expdesc *e, int cond) {
+  luaK_dischargevars(fs, e);
+  int reg = luaK_exp2anyreg(fs, e);
+  luaK_codeABC(fs, OP_TESTNIL, reg, 0, cond);
+  return luaK_jump(fs);
 }
 
 
@@ -718,7 +732,7 @@ int luaK_exp2anyreg (FuncState *fs, expdesc *e) {
     if (!hasjumps(e))  /* no jumps? */
       return e->u.info;  /* result is already in a register */
     if (e->u.info >= fs->nactvar) {  /* reg. is not a local? */
-      luaK_exp2reg(fs, e, e->u.info);  /* put final result in it */
+      exp2reg(fs, e, e->u.info);  /* put final result in it */
       return e->u.info;
     }
   }
@@ -783,7 +797,7 @@ void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
   switch (var->k) {
     case VLOCAL: {
       freeexp(fs, ex);
-      luaK_exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
+      exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
       return;
     }
     case VUPVAL: {
@@ -1089,6 +1103,13 @@ void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
       luaK_goiffalse(fs, v);  /* go ahead only if 'v' is false */
       break;
     }
+    case OPR_NULLCOAL: {
+      luaK_dischargevars(fs, v);
+      int reg = luaK_exp2anyreg(fs, v);
+      luaK_codeABC(fs, OP_TESTNILSET, reg, reg, 1);
+      v->f = luaK_jump(fs);
+      break;
+    }
     case OPR_CONCAT: {
       luaK_exp2nextreg(fs, v);  /* operand must be on the 'stack' */
       break;
@@ -1127,6 +1148,44 @@ void luaK_posfix (FuncState *fs, BinOpr op,
       *e1 = *e2;
       break;
     }
+    case OPR_NULLCOAL: {
+      luaK_dischargevars(fs, e2);
+      luaK_concat(fs, &e2->f, e1->f);
+      *e1 = *e2;
+      break;
+    }
+    case OPR_PIPE: {
+      luaK_exp2nextreg(fs, e2);
+      int base = e2->u.info;
+      luaK_exp2reg(fs, e1, base + 1);
+      e1->k = VCALL;
+      e1->u.info = luaK_codeABC(fs, OP_CALL, base, 2, 2);
+      e1->f = e1->t = NO_JUMP;
+      break;
+    }
+    case OPR_BPIPE: {
+      luaK_exp2nextreg(fs, e1);
+      int base = e1->u.info;
+      luaK_exp2reg(fs, e2, base + 1);
+      e1->k = VCALL;
+      e1->u.info = luaK_codeABC(fs, OP_CALL, base, 2, 2);
+      e1->f = e1->t = NO_JUMP;
+      break;
+    }
+    case OPR_SPIPE: {
+      int end_jump;
+      luaK_exp2nextreg(fs, e1);
+      int base = e1->u.info;
+      luaK_codeABC(fs, OP_TESTNIL, base, 0, 0);
+      end_jump = luaK_jump(fs);
+      luaK_exp2reg(fs, e2, base);
+      luaK_exp2reg(fs, e1, base + 1);
+      e1->k = VCALL;
+      e1->u.info = luaK_codeABC(fs, OP_CALL, base, 2, 2);
+      e1->f = e1->t = NO_JUMP;
+      luaK_patchtohere(fs, end_jump);
+      break;
+    }
     case OPR_OR: {
       lua_assert(e1->f == NO_JUMP);  /* list closed by 'luK_infix' */
       luaK_dischargevars(fs, e2);
@@ -1160,6 +1219,10 @@ void luaK_posfix (FuncState *fs, BinOpr op,
     case OPR_EQ: case OPR_LT: case OPR_LE:
     case OPR_NE: case OPR_GT: case OPR_GE: {
       codecomp(fs, op, e1, e2);
+      break;
+    }
+    case OPR_SPACESHIP: {
+      codebinexpval(fs, OP_SPACESHIP, e1, e2, line);
       break;
     }
     default: lua_assert(0);

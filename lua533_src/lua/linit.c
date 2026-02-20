@@ -49,6 +49,12 @@ static const luaL_Reg loadedlibs[] = {
   {LUA_STRLIBNAME, luaopen_string},
   {LUA_MATHLIBNAME, luaopen_math},
   {LUA_UTF8LIBNAME, luaopen_utf8},
+  {"lclass", luaopen_lclass},
+  {"vmprotect", luaopen_vmprotect},
+  {"sha256", luaopen_sha256},
+  {"json", luaopen_json},
+  {"fs", luaopen_fs},
+  {"process", luaopen_process},
   {LUA_DBLIBNAME, luaopen_debug},
 #if defined(LUA_COMPAT_BITLIB)
   {LUA_BITLIBNAME, luaopen_bit32},

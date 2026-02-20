@@ -210,6 +210,9 @@ OP_LE,/*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++		*/
 
 OP_TEST,/*	A C	if not (R(A) <=> C) then pc++			*/
 OP_TESTSET,/*	A B C	if (R(B) <=> C) then R(A) := R(B) else pc++	*/
+OP_TESTNIL,/*	A C	if ((ttisnil(RA) <=> C)) then pc++		*/
+OP_TESTNILSET,/* A B C if (!(ttisnil(RB) <=> C)) then RA := RB else pc++ */
+OP_SPACESHIP,/*	A B C	R(A) := compare(RK(B), RK(C))			*/
 
 OP_CALL,/*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
 OP_TAILCALL,/*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
@@ -235,7 +238,7 @@ OP_NEWARRAY,/*	A B C	R(A) := {} (size = B,C)				*/
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_EXTRAARG) + 4)
+#define NUM_OPCODES	(cast(int, OP_EXTRAARG) + 7)
 
 
 

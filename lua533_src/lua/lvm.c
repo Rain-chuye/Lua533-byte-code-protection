@@ -1100,6 +1100,33 @@ void luaV_execute (lua_State *L) {
         }
         vmbreak;
       }
+      vmcase(OP_SPACESHIP) {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        int res;
+        if (luaV_equalobj(L, rb, rc)) res = 0;
+        else if (luaV_lessthan(L, rb, rc)) res = -1;
+        else res = 1;
+        setivalue(ra, res);
+        vmbreak;
+      }
+      vmcase(OP_TESTNIL) {
+        if (GETARG_C(i) ? ttisnil(ra) : !ttisnil(ra))
+            ci->u.l.savedpc++;
+          else
+          donextjump(ci);
+        vmbreak;
+      }
+      vmcase(OP_TESTNILSET) {
+        TValue *rb = RB(i);
+        if (GETARG_C(i) ? ttisnil(rb) : !ttisnil(rb))
+          ci->u.l.savedpc++;
+        else {
+          if (GETARG_A(i) != NO_REG) setobjs2s(L, ra, rb);
+          donextjump(ci);
+        }
+        vmbreak;
+      }
       vmcase(OP_BNOT) {
         TValue *rb = RB(i);
         lua_Integer ib;
@@ -1179,7 +1206,7 @@ void luaV_execute (lua_State *L) {
         if (GETARG_C(i) ? l_isfalse(rb) : !l_isfalse(rb))
           ci->u.l.savedpc++;
         else {
-          setobjs2s(L, ra, rb);
+          if (GETARG_A(i) != NO_REG) setobjs2s(L, ra, rb);
           donextjump(ci);
         }
         vmbreak;
