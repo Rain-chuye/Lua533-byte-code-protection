@@ -49,6 +49,7 @@ typedef struct {
     int strip;
     int status;
     uint32_t timestamp;
+    uint32_t base_timestamp;
     SHA256_CTX sha256;
     int secure;
 } DumpState;
@@ -70,6 +71,7 @@ static void DumpBlock (const void *b, size_t size, DumpState *D) {
         memcpy(buf, b, size);
         for (size_t i = 0; i < size; i++) {
             buf[i] ^= (D->timestamp >> ((i % 4) * 8)) & 0xFF;
+            D->timestamp = D->timestamp * 1103515245 + 12345;
         }
         sha256_update(&D->sha256, buf, size);
         lua_unlock(D->L);
@@ -130,7 +132,7 @@ static void DumpCode (const Proto *f, DumpState *D) {
   DumpInt(f->sizecode, D);
   if (D->secure) {
       int map[NUM_OPCODES];
-      shuffle_opcodes(map, D->timestamp);
+      shuffle_opcodes(map, D->base_timestamp);
       Instruction *code = (Instruction*)malloc(f->sizecode * sizeof(Instruction));
       for (int i = 0; i < f->sizecode; i++) {
           OpCode op = GET_OPCODE(f->code[i]);
@@ -234,6 +236,7 @@ static void DumpFunction (const Proto *f, TString *psource, DumpState *D) {
 
 static void DumpHeader (DumpState *D) {
   DumpLiteral(LUA_SIGNATURE, D);
+  DumpInt(0xDEADBEEF, D); /* VM ID */
   DumpByte(LUAC_VERSION, D);
   DumpByte(LUAC_FORMAT, D);
   DumpLiteral(LUAC_DATA, D);
@@ -249,6 +252,7 @@ static void DumpHeader (DumpState *D) {
 
   /* Security Header */
   D->timestamp = (uint32_t)time(NULL);
+  D->base_timestamp = D->timestamp;
   D->secure = 0;
   DumpInt(D->timestamp, D);
 }

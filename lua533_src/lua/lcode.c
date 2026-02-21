@@ -194,14 +194,18 @@ static Instruction *getjumpcontrol (FuncState *fs, int pc) {
 */
 static int patchtestreg (FuncState *fs, int node, int reg) {
   Instruction *i = getjumpcontrol(fs, node);
-  if (GET_OPCODE(*i) != OP_TESTSET)
+  OpCode op = GET_OPCODE(*i);
+  if (op != OP_TESTSET && op != OP_TESTNILSET)
     return 0;  /* cannot patch other instructions */
   if (reg != NO_REG && reg != GETARG_B(*i))
     SETARG_A(*i, reg);
   else {
      /* no register to put value or register already has the value;
         change instruction to simple test */
-    *i = CREATE_ABC(OP_TEST, GETARG_B(*i), 0, GETARG_C(*i));
+    if (op == OP_TESTSET)
+      *i = CREATE_ABC(OP_TEST, GETARG_B(*i), 0, GETARG_C(*i));
+    else
+      *i = CREATE_ABC(OP_TESTNIL, GETARG_B(*i), 0, GETARG_C(*i));
   }
   return 1;
 }
@@ -1106,8 +1110,9 @@ void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
     case OPR_NULLCOAL: {
       luaK_dischargevars(fs, v);
       int reg = luaK_exp2anyreg(fs, v);
-      luaK_codeABC(fs, OP_TESTNILSET, reg, reg, 1);
-      v->f = luaK_jump(fs);
+      luaK_codeABC(fs, OP_TESTNILSET, NO_REG, reg, 1);
+      v->t = luaK_jump(fs);
+      freeexp(fs, v);
       break;
     }
     case OPR_CONCAT: {
@@ -1150,7 +1155,7 @@ void luaK_posfix (FuncState *fs, BinOpr op,
     }
     case OPR_NULLCOAL: {
       luaK_dischargevars(fs, e2);
-      luaK_concat(fs, &e2->f, e1->f);
+      luaK_concat(fs, &e2->t, e1->t);
       *e1 = *e2;
       break;
     }

@@ -56,6 +56,7 @@ typedef struct {
     ZIO *Z;
     const char *name;
     uint32_t timestamp;
+    uint32_t base_timestamp;
     SHA256_CTX sha256;
     int secure;
 } LoadState;
@@ -80,6 +81,7 @@ static void LoadBlock (LoadState *S, void *b, size_t size) {
     sha256_update(&S->sha256, (uint8_t*)b, size);
     for (size_t i = 0; i < size; i++) {
         ((uint8_t*)b)[i] ^= (S->timestamp >> ((i % 4) * 8)) & 0xFF;
+        S->timestamp = S->timestamp * 1103515245 + 12345;
     }
   }
 }
@@ -144,7 +146,7 @@ static void LoadCode (LoadState *S, Proto *f) {
   LoadVector(S, f->code, n);
   if (S->secure) {
       int map[NUM_OPCODES];
-      unshuffle_opcodes(map, S->timestamp);
+      unshuffle_opcodes(map, S->base_timestamp);
       for (int i = 0; i < n; i++) {
           OpCode op = GET_OPCODE(f->code[i]);
           SET_OPCODE(f->code[i], map[op]);
@@ -276,6 +278,8 @@ static void fchecksize (LoadState *S, size_t size, const char *tname) {
 
 static void checkHeader (LoadState *S) {
   checkliteral(S, LUA_SIGNATURE + 1, "not a");  /* 1st char already checked */
+  if (LoadInt(S) != 0xDEADBEEF)
+    error(S, "VM ID mismatch - this bytecode is for a different VM version");
   if (LoadByte(S) != LUAC_VERSION)
     error(S, "version mismatch in");
   if (LoadByte(S) != LUAC_FORMAT)
@@ -294,6 +298,7 @@ static void checkHeader (LoadState *S) {
     error(S, "float format mismatch in");
 
   S->timestamp = LoadInt(S);
+  S->base_timestamp = S->timestamp;
 }
 
 

@@ -238,7 +238,7 @@ OP_NEWARRAY,/*	A B C	R(A) := {} (size = B,C)				*/
 } OpCode;
 
 
-#define NUM_OPCODES	(cast(int, OP_EXTRAARG) + 7)
+#define NUM_OPCODES	(cast(int, OP_TFOREACH) + 1)
 
 
 

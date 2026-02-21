@@ -168,9 +168,7 @@ static void check_match (LexState *ls, int what, int who, int where) {
 
 static TString *str_checkname (LexState *ls) {
   TString *ts;
-  //check(ls, TK_NAME);
-  //mod by nirenr
-  if (ls->t.token != TK_NAME&&(ls->t.token > TK_WHILE||ls->t.token <FIRST_RESERVED))
+  if (ls->t.token != TK_NAME && (ls->t.token > TK_LONG_K || ls->t.token < FIRST_RESERVED))
     error_expected(ls, TK_NAME);
   ts = ls->t.seminfo.ts;
   luaX_next(ls);
@@ -1436,7 +1434,9 @@ static void primaryexp (LexState *ls, expdesc *v) {
       luaK_dischargevars(ls->fs, v);
       return;
     }
-    case TK_NAME: {
+    case TK_NAME:
+    case TK_INT_K: case TK_FLOAT_K: case TK_BOOL_K:
+    case TK_STRING_K: case TK_VOID_K: case TK_CHAR_K: case TK_LONG_K: {
       singlevar(ls, v);
       return;
     }
@@ -2826,7 +2826,11 @@ static void statement (LexState *ls) {
     }
     case TK_INT_K: case TK_FLOAT_K: case TK_BOOL_K:
     case TK_STRING_K: case TK_VOID_K: case TK_CHAR_K: case TK_LONG_K: {
-      c_funcstat(ls, line);
+      if (luaX_lookahead(ls) == TK_NAME && (luaX_lookahead2(ls) == '(' || luaX_lookahead2(ls) == '{')) {
+        c_funcstat(ls, line);
+      } else {
+        exprstat(ls);
+      }
       break;
     }
     case TK_LOCAL: {  /* stat -> localstat */

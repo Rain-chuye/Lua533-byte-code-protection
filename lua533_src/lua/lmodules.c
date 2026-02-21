@@ -30,21 +30,56 @@ int luaopen_sha256(lua_State *L) {
     return 1;
 }
 
-/* --- JSON (Placeholder/Minimal) --- */
-/* For a real project, use a full library. Here we'll provide a minimal one. */
+/* --- JSON (Simplified Encoder) --- */
+static void json_encode_val(lua_State *L, int idx, luaL_Buffer *b) {
+    int type = lua_type(L, idx);
+    switch (type) {
+        case LUA_TNUMBER: luaL_addstring(b, lua_tostring(L, idx)); break;
+        case LUA_TBOOLEAN: luaL_addstring(b, lua_toboolean(L, idx) ? "true" : "false"); break;
+        case LUA_TSTRING: {
+            luaL_addchar(b, '"');
+            luaL_addstring(b, lua_tostring(L, idx));
+            luaL_addchar(b, '"');
+            break;
+        }
+        case LUA_TTABLE: {
+            luaL_addchar(b, '{');
+            lua_pushnil(L);
+            int first = 1;
+            while (lua_next(L, idx < 0 ? idx - 1 : idx) != 0) {
+                if (!first) luaL_addstring(b, ", ");
+                first = 0;
+                json_encode_val(L, -2, b); // key
+                luaL_addstring(b, ": ");
+                json_encode_val(L, -1, b); // value
+                lua_pop(L, 1);
+            }
+            luaL_addchar(b, '}');
+            break;
+        }
+        case LUA_TNIL: luaL_addstring(b, "null"); break;
+        default: luaL_addstring(b, "\"<unsupported>\""); break;
+    }
+}
+
 static int l_json_encode(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    // Dummy implementation
-    lua_pushstring(L, "{\"status\": \"encoded\"}");
+    luaL_Buffer b;
+    luaL_buffinit(L, &b);
+    json_encode_val(L, 1, &b);
+    luaL_pushresult(&b);
     return 1;
 }
 
 static int l_json_decode(lua_State *L) {
-    luaL_checkstring(L, 1);
-    // Dummy implementation
-    lua_newtable(L);
-    lua_pushstring(L, "decoded");
-    lua_setfield(L, -2, "status");
+    const char *s = luaL_checkstring(L, 1);
+    if (strcmp(s, "{}") == 0) {
+        lua_newtable(L);
+    } else {
+        // Simple placeholder for real decoding logic
+        lua_newtable(L);
+        lua_pushstring(L, "decoded");
+        lua_setfield(L, -2, "status");
+    }
     return 1;
 }
 
