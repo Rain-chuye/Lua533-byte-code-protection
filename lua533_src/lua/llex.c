@@ -463,9 +463,7 @@ static int read_string_generic (LexState *ls, int del, SemInfo *seminfo, int is_
        no_save: break;
       }
       case '$': {
-        next(ls);
-        if (ls->current == '{') {
-           next(ls);
+        if (check_next1(ls, '{')) {
            if (!is_continuation) {
              ls->interp_level++;
              ls->interp_delim[ls->interp_level-1] = del;
@@ -475,17 +473,8 @@ static int read_string_generic (LexState *ls, int del, SemInfo *seminfo, int is_
                                             luaZ_bufflen(ls->buff) - (is_continuation ? 0 : 1));
            return (is_continuation ? TK_INTERP_MID : TK_INTERP_BEG);
         }
-        /* Preprocessor directive placeholder */
-        luaZ_resetbuffer(ls->buff);
-        while (lislalnum(ls->current)) save_and_next(ls);
-        if (luaZ_bufflen(ls->buff) > 0) {
-            TString *ts = luaX_newstring(ls, luaZ_buffer(ls->buff), luaZ_bufflen(ls->buff));
-            if (strcmp(getstr(ts), "haltcompiler") == 0) {
-                exit(0);
-            }
-        }
-        while (ls->current != '\n' && ls->current != '\r' && ls->current != EOZ) next(ls);
-        continue;
+        save_and_next(ls);
+        break;
       }
       default:
         save_and_next(ls);
