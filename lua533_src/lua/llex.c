@@ -463,14 +463,16 @@ static int read_string_generic (LexState *ls, int del, SemInfo *seminfo, int is_
        no_save: break;
       }
       case '$': {
-        if (check_next1(ls, '{')) {
+        if (luaZ_lookahead(ls->z) == '{') {
+           seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->buff) + (is_continuation ? 0 : 1),
+                                            luaZ_bufflen(ls->buff) - (is_continuation ? 0 : 1));
+           next(ls); // consume '$'
+           next(ls); // consume '{'
            if (!is_continuation) {
              ls->interp_level++;
              ls->interp_delim[ls->interp_level-1] = del;
            }
            ls->brace_levels[ls->interp_level-1] = 0;
-           seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->buff) + (is_continuation ? 0 : 1),
-                                            luaZ_bufflen(ls->buff) - (is_continuation ? 0 : 1));
            return (is_continuation ? TK_INTERP_MID : TK_INTERP_BEG);
         }
         save_and_next(ls);
@@ -624,8 +626,8 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         return TK_DBCOLON;
       }
       case '$': {
-        next(ls);
-        if (lislalpha(ls->current)) {
+        if (lislalpha(luaZ_lookahead(ls->z))) {
+            next(ls); // consume '$'
             luaZ_resetbuffer(ls->buff);
             while (lislalnum(ls->current)) save_and_next(ls);
             TString *ts = luaX_newstring(ls, luaZ_buffer(ls->buff), luaZ_bufflen(ls->buff));
@@ -633,9 +635,11 @@ static int llex (LexState *ls, SemInfo *seminfo) {
                 exit(0);
             }
             // Other preprocessor directives here...
+            while (ls->current != '\n' && ls->current != '\r' && ls->current != EOZ) next(ls);
+            return llex(ls, seminfo);
         }
-        while (ls->current != '\n' && ls->current != '\r' && ls->current != EOZ) next(ls);
-        return llex(ls, seminfo);
+        next(ls);
+        return '$';
       }
 //---
       case '~': {
