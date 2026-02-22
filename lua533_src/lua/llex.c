@@ -437,7 +437,7 @@ static int read_string_generic (LexState *ls, int del, SemInfo *seminfo, int is_
           case 'u': utf8esc(ls);  goto no_save;
           case '\n': case '\r':
             inclinenumber(ls); c = '\n'; goto only_save;
-          case '\\': case '\"': case '\'':
+          case '\\': case '\"': case '\'': case '$':
             c = ls->current; goto read_save;
           case EOZ: goto no_save;
           case 'z': {

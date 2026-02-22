@@ -1444,7 +1444,14 @@ static void primaryexp (LexState *ls, expdesc *v) {
     case TK_NAME:
     case TK_INT_K: case TK_FLOAT_K: case TK_BOOL_K:
     case TK_STRING_K: case TK_VOID_K: case TK_CHAR_K: case TK_LONG_K:
-    case TK_USING: case TK_NAMESPACE: {
+    case TK_USING: case TK_NAMESPACE: case TK_STRUCT: case TK_ENUM:
+    case TK_TRY: case TK_CATCH: case TK_FINALLY:
+    case TK_CLASS: case TK_EXTENDS: case TK_IMPLEMENTS:
+    case TK_PUBLIC: case TK_PRIVATE: case TK_PROTECTED:
+    case TK_STATIC: case TK_ABSTRACT: case TK_FINAL: case TK_SEALED:
+    case TK_GET: case TK_SET: case TK_NEW:
+    case TK_ASYNC: case TK_AWAIT:
+    case TK_ASM: {
       singlevar(ls, v);
       return;
     }

@@ -4,10 +4,10 @@ LOCAL_PATH := $(call my-dir)
 # compiled as static library to embed in liblua-activity.so
 include $(CLEAR_VARS)
 LOCAL_MODULE := lua
-CAL_ARM_MODE := arm
+LOCAL_ARM_MODE := arm
 TARGET_PLATFORM := armeabi-v7a
 TARGET_ABI := android-14-armeabi
-LOCAL_CFLAGS += -std=c99
+LOCAL_CFLAGS += -std=gnu99 -O3 -Wall
 
 
 LOCAL_SRC_FILES := \
@@ -15,6 +15,7 @@ LOCAL_SRC_FILES := \
 	lauxlib.c \
 	lbaselib.c \
 	lbitlib.c \
+	lclasslib.c \
 	lcode.c \
 	lcorolib.c \
 	lctype.c \
@@ -29,6 +30,7 @@ LOCAL_SRC_FILES := \
 	llex.c \
 	lmathlib.c \
 	lmem.c \
+	lmodules.c \
 	loadlib.c \
 	lobject.c \
 	lopcodes.c \
@@ -43,13 +45,13 @@ LOCAL_SRC_FILES := \
 	lundump.c \
 	lutf8lib.c \
 	lvm.c \
-	lzio.c
-#	lua.c \
-#	luac.c \
+	lvmprotect.c \
+	lzio.c \
+	sha256.c
 
 # Auxiliary lua user defined file
 # LOCAL_SRC_FILES += luauser.c
 # LOCAL_CFLAGS := -DLUA_DL_DLOPEN -DLUA_USER_H='"luauser.h"'
 
-LOCAL_CFLAGS := -DLUA_DL_DLOPEN
+LOCAL_CFLAGS += -DLUA_DL_DLOPEN -DLUA_COMPAT_5_2
 include $(BUILD_STATIC_LIBRARY)
