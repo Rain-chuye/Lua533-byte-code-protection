@@ -640,7 +640,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 //---
       case '~': {
         next(ls);
-        if (check_next1(ls, '=')) return TK_BITXOREQ;
+        if (check_next1(ls, '=')) return TK_NE;
         else return '~';
       }
       case ':': {

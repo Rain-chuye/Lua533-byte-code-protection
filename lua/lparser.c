@@ -1376,6 +1376,7 @@ static UnOpr getunopr (int op) {
 
 static BinOpr getbinopr (int op) {
   switch (op) {
+    case '=': return OPR_EQ;
     case '+': return OPR_ADD;
     case '-': return OPR_SUB;
     case '*': return OPR_MUL;
@@ -1639,6 +1640,7 @@ static BinOpr get_compound_opr(int token) {
     case TK_CONCATEQ: return OPR_CONCAT;
     case TK_BITANDEQ: return OPR_BAND;
     case TK_BITOREQ: return OPR_BOR;
+    case TK_NE:
     case TK_BITXOREQ: return OPR_BXOR;
     case TK_SHLEQ: return OPR_SHL;
     case TK_SHREQ: return OPR_SHR;
