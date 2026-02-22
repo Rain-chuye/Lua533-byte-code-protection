@@ -340,6 +340,6 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name) {
   }
 
   lua_assert(cl->nupvalues == cl->p->sizeupvalues);
-  luai_verifycode(L, buff, cl->p);
+  luai_verifycode(L, NULL, cl->p);
   return cl;
 }

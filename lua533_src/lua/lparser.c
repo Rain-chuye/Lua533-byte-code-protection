@@ -795,12 +795,11 @@ static void trystat (LexState *ls, int line) {
   expdesc pcall_v, try_f, err_v;
   int base;
   int jf_ok = NO_JUMP;
-  int jmp_to_end = NO_JUMP;
+  int jmp_to_finally = NO_JUMP;
   BlockCnt bl_catch, bl_finally;
 
   luaX_next(ls); /* skip TRY */
 
-  /* 1. Get pcall */
   TString *pcall_s = luaS_newliteral(ls->L, "pcall");
   singlevaraux(fs, pcall_s, &pcall_v, 1);
   if (pcall_v.k == VVOID) {
@@ -812,20 +811,16 @@ static void trystat (LexState *ls, int line) {
   luaK_exp2nextreg(fs, &pcall_v);
   base = pcall_v.u.info;
 
-  /* 2. Compile try block as closure */
   trybody(ls, &try_f, line);
   luaK_exp2reg(fs, &try_f, base + 1);
 
-  /* 3. Call pcall (1 arg, 2 results: ok, err) */
   luaK_codeABC(fs, OP_CALL, base, 2, 3);
   fs->freereg = base + 2;
 
-  /* Test ok_v (at base) */
   luaK_codeABC(fs, OP_TEST, base, 0, 0);
   jf_ok = luaK_jump(fs); /* jump to catch if false */
 
-  /* If ok, jump to end of catch or finally */
-  jmp_to_end = luaK_jump(fs);
+  jmp_to_finally = luaK_jump(fs);
 
   luaK_patchtohere(fs, jf_ok);
 
@@ -847,7 +842,7 @@ static void trystat (LexState *ls, int line) {
     leaveblock(fs);
   }
 
-  luaK_patchtohere(fs, jmp_to_end);
+  luaK_patchtohere(fs, jmp_to_finally);
 
   if (ls->t.token == TK_FINALLY) {
     luaX_next(ls);
@@ -2272,7 +2267,8 @@ static void test_case_block (LexState *ls, int *escapelist, expdesc *control) {
     luaK_posfix(ls->fs, OPR_OR, control, &c, ls->linenumber);
   }
   leavelevel(ls);
-  ichecknext(ls, TK_THEN);
+  if (ls->t.token == TK_THEN || ls->t.token == ':') luaX_next(ls);
+  else if (ls->t.token == TK_DO) luaX_next(ls);
 
   if (ls->t.token == TK_GOTO || ls->t.token == TK_BREAK || ls->t.token == TK_CONTINUE) {
     luaK_goiffalse(ls->fs, control);  /* will jump to label if condition is true */
@@ -2355,23 +2351,31 @@ static void switchexp (LexState *ls, expdesc *v) {
 
 
 static void switchstat (LexState *ls, int line) {
-  /* switchstat -> SWITCH control CASE value THEN block [DEFAULT block] END */
+  /* switchstat -> SWITCH control [DO|{] {CASE value [THEN|:|DO] block} [DEFAULT [THEN|:|DO] block] [END|}] */
   int escapelist = NO_JUMP; /* exit list for finished parts */
   expdesc control;
+  int has_brace = 0;
   luaX_next(ls); /* skip SWITCH */
-  expr(ls, &control); /* read control */
+  if (testnext(ls, '(')) {
+      expr(ls, &control);
+      checknext(ls, ')');
+  } else {
+      expr(ls, &control); /* read control */
+  }
   FuncState *fs = ls->fs;
-  //check(ls, TK_CASE);
-  ichecknext(ls, TK_DO);
+  if (testnext(ls, '{')) has_brace = 1;
+  else testnext(ls, TK_DO);
+
   while (ls->t.token == TK_CASE){
     expdesc vt = clone(control);
-    test_case_block(ls, &escapelist, &vt);  /* CASE value THEN block */
+    test_case_block(ls, &escapelist, &vt);
   }
   if (testnext(ls, TK_DEFAULT)){
-    ichecknext(ls, TK_THEN);
+    if (ls->t.token == TK_THEN || ls->t.token == ':') luaX_next(ls);
     block(ls);  /* DEFAULT block */
   }
-  check_match(ls, TK_END, TK_SWITCH, line);
+  if (has_brace) check_match(ls, '}', '{', line);
+  else check_match(ls, TK_END, TK_SWITCH, line);
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'switch' end */
 }
 
@@ -2648,12 +2652,15 @@ static void asm_stat (LexState *ls) {
 
 
 static void usingstat (LexState *ls) {
-  /* usingstat -> USING NAME [:: MEMBER] ';' */
+  /* usingstat -> USING [NAMESPACE] NAME [:: MEMBER] ';' */
   FuncState *fs = ls->fs;
   TString *nname;
   expdesc v_ns, v_env, v_key;
 
   luaX_next(ls); /* skip USING */
+  if (ls->t.token == TK_NAMESPACE) {
+    luaX_next(ls);
+  }
   nname = str_checkname(ls);
 
   singlevaraux(fs, ls->envn, &v_env, 1);
@@ -2667,16 +2674,10 @@ static void usingstat (LexState *ls) {
     codestring(ls, &v_key, mname);
     luaK_indexed(fs, &v_ns, &v_key);
 
-    /* Assign to local or global? Let's make it a local for current block if possible,
-       but using is often global. Standard Lua doesn't have a good way to pull into global
-       easily here without generating an assignment. */
     new_localvar(ls, mname);
     adjustlocalvars(ls, 1);
     luaK_exp2reg(fs, &v_ns, fs->nactvar - 1);
   } else {
-    /* using Name; -> pull all? This is hard to do at compile time in Lua.
-       Maybe just record it? Or just pull Name itself as a local?
-       Prompt says 'using Name;'. We'll pull Name as a local for now. */
     new_localvar(ls, nname);
     adjustlocalvars(ls, 1);
     luaK_exp2reg(fs, &v_ns, fs->nactvar - 1);
