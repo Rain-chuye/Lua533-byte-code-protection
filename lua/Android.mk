@@ -44,7 +44,17 @@ LOCAL_SRC_FILES := \
 	lutf8lib.c \
 	lvm.c \
 	lzio.c \
-	lobfuscator.c
+	lobfuscator.c \
+	ljson.c \
+	lsha256.c \
+	lfs.c \
+	lvmprotect.c \
+	lhttp.c \
+	lprocess.c \
+	lthread.c \
+	lstruct.c \
+	llogtable.c \
+	lptrlib.c
 #	lua.c \
 #	luac.c \
 

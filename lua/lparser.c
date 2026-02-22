@@ -12,6 +12,7 @@
 
 #include <string.h>
 #include "lobfuscator.h"
+#include <stdlib.h>
 
 #include "lua.h"
 
@@ -62,6 +63,7 @@ typedef struct BlockCnt {
 */
 static void statement (LexState *ls);
 static void expr (LexState *ls, expdesc *v);
+static int funcname (LexState *ls, expdesc *v);
 static void retstat(LexState *ls);
 static void block (LexState *ls);
 
@@ -625,6 +627,8 @@ static void close_func (LexState *ls) {
 static int block_follow (LexState *ls, int withuntil) {
   switch (ls->t.token) {
     case TK_ELSE: case TK_ELSEIF:
+    case TK_CATCH: case TK_FINALLY:
+    case TK_WHEN:
     case TK_END: case TK_EOS:
     case TK_CASE: case TK_DEFAULT: case '}':
       return 1;
@@ -1072,6 +1076,52 @@ static void primaryexp (LexState *ls, expdesc *v) {
     case TK_NAME: {
       singlevar(ls, v);
       return;
+    }
+    case TK_ASYNC: {
+        luaX_next(ls);
+        checknext(ls, TK_FUNCTION);
+        expdesc b;
+        body(ls, &b, 0, ls->linenumber);
+        FuncState *fs = ls->fs;
+        expdesc async_f;
+        int base = fs->freereg;
+        singlevaraux(fs, luaS_new(ls->L, "async"), &async_f, 1);
+        if (async_f.k == VVOID) {
+            expdesc key;
+            singlevaraux(fs, ls->envn, &async_f, 1);
+            codestring(ls, &key, luaS_new(ls->L, "async"));
+            luaK_indexed(fs, &async_f, &key);
+        }
+        luaK_exp2nextreg(fs, &async_f);
+        luaK_exp2nextreg(fs, &b);
+        luaK_codeABC(fs, OP_CALL, base, 2, 2);
+        init_exp(v, VNONRELOC, base);
+        fs->freereg = base + 1;
+        return;
+    }
+    case TK_AWAIT: {
+        luaX_next(ls);
+        FuncState *fs = ls->fs;
+        expdesc f, args;
+        int base = fs->freereg;
+        singlevaraux(fs, luaS_new(ls->L, "coroutine"), &f, 1);
+        if (f.k == VVOID) {
+            singlevaraux(fs, ls->envn, &f, 1);
+            expdesc key;
+            codestring(ls, &key, luaS_new(ls->L, "coroutine"));
+            luaK_indexed(fs, &f, &key);
+        }
+        luaK_exp2nextreg(fs, &f);
+        expdesc key;
+        codestring(ls, &key, luaS_new(ls->L, "yield"));
+        luaK_indexed(fs, &f, &key);
+        luaK_exp2nextreg(fs, &f);
+        expr(ls, &args);
+        luaK_exp2nextreg(fs, &args);
+        luaK_codeABC(fs, OP_CALL, base, 2, 2);
+        init_exp(v, VNONRELOC, base);
+        fs->freereg = base + 1;
+        return;
     }
     case TK_LUAVMP: {
       FuncState *fs = ls->fs;
@@ -1878,12 +1928,12 @@ static void forstat (LexState *ls, int line) {
 }
 
 static void test_then_block (LexState *ls, int *escapelist) {
-  /* test_then_block -> [IF | ELSEIF] cond THEN block */
+  /* test_then_block -> [IF | ELSEIF | WHEN | CASE] cond THEN block */
   BlockCnt bl;
   FuncState *fs = ls->fs;
   expdesc v;
   int jf;  /* instruction to skip 'then' code (if condition is false) */
-  luaX_next(ls);  /* skip IF or ELSEIF */
+  luaX_next(ls);  /* skip IF or ELSEIF or WHEN or CASE */
   expr(ls, &v);  /* read condition */
   ichecknext(ls, TK_THEN);//mod by nirenr
   if (ls->t.token == TK_GOTO || ls->t.token == TK_BREAK || ls->t.token == TK_CONTINUE) {
@@ -1917,16 +1967,153 @@ static void test_then_block (LexState *ls, int *escapelist) {
 }
 
 
+static void trystat (LexState *ls, int line) {
+  /* trystat -> TRY block CATCH [ '(' NAME ')' ] block [FINALLY block] END */
+  FuncState *fs = ls->fs;
+  expdesc pcall_func, try_closure, pcall_call, ok_var;
+  int base = fs->freereg;
+  int jf_ok = NO_JUMP;
+  int jf_end = NO_JUMP;
+  BlockCnt bl;
+
+  luaX_next(ls); /* skip TRY */
+
+  /* Get pcall */
+  singlevaraux(fs, luaS_new(ls->L, "pcall"), &pcall_func, 1);
+  if (pcall_func.k == VVOID) {
+      expdesc key;
+      singlevaraux(fs, ls->envn, &pcall_func, 1);
+      codestring(ls, &key, luaS_new(ls->L, "pcall"));
+      luaK_indexed(fs, &pcall_func, &key);
+  }
+  luaK_exp2nextreg(fs, &pcall_func);
+  //printf("trystat: pcall at %d, freereg=%d\n", pcall_func.u.info, fs->freereg);
+
+  /* Build try closure */
+  {
+      FuncState new_fs;
+      BlockCnt bl_try;
+      new_fs.f = addprototype(ls);
+      new_fs.f->linedefined = line;
+      open_func(ls, &new_fs, &bl_try);
+      statlist(ls);
+      new_fs.f->lastlinedefined = ls->linenumber;
+      codeclosure(ls, &try_closure);
+      close_func(ls);
+  }
+  luaK_exp2nextreg(fs, &try_closure);
+
+  /* Call pcall(try_closure) -> returns 2 values */
+  init_exp(&pcall_call, VCALL, luaK_codeABC(fs, OP_CALL, base, 2, 3));
+  luaK_setreturns(fs, &pcall_call, 2);
+  // Now ok is at base, err is at base + 1
+  fs->freereg = base + 2;
+
+  if (ls->t.token == TK_CATCH) {
+      luaX_next(ls); /* skip CATCH */
+      init_exp(&ok_var, VNONRELOC, base);
+      luaK_goiftrue(fs, &ok_var);
+      jf_ok = luaK_jump(fs); /* skip catch if ok is true */
+      luaK_patchtohere(fs, ok_var.f);
+
+      enterblock(fs, &bl, 0);
+      if (testnext(ls, '(')) {
+          TString *vname = str_checkname(ls);
+          checknext(ls, ')');
+          new_localvar(ls, vname);
+          adjustlocalvars(ls, 1);
+          expdesc e_var, err_val;
+          init_exp(&e_var, VLOCAL, fs->nactvar - 1);
+          init_exp(&err_val, VNONRELOC, base + 1);
+          luaK_storevar(fs, &e_var, &err_val);
+      }
+      statlist(ls);
+      leaveblock(fs);
+      luaK_concat(fs, &jf_end, luaK_jump(fs));
+      luaK_patchtohere(fs, jf_ok);
+  }
+
+  if (testnext(ls, TK_FINALLY)) {
+      statlist(ls);
+  }
+
+  check_match(ls, TK_END, TK_TRY, line);
+  luaK_patchtohere(fs, jf_end);
+  fs->freereg = base;
+}
+
+static void async_funcstat (LexState *ls, int line) {
+  int ismethod;
+  expdesc v, b;
+  // ASYNC was already skipped in statement()
+  checknext(ls, TK_FUNCTION);
+  ismethod = funcname(ls, &v);
+  body(ls, &b, ismethod, line);
+
+  /* Wrap b in async(b) */
+  FuncState *fs = ls->fs;
+  expdesc async_f;
+  int base = fs->freereg;
+  singlevaraux(fs, luaS_new(ls->L, "async"), &async_f, 1);
+  if (async_f.k == VVOID) {
+      expdesc key;
+      singlevaraux(fs, ls->envn, &async_f, 1);
+      codestring(ls, &key, luaS_new(ls->L, "async"));
+      luaK_indexed(fs, &async_f, &key);
+  }
+  luaK_exp2nextreg(fs, &async_f);
+  luaK_exp2nextreg(fs, &b);
+  luaK_codeABC(fs, OP_CALL, base, 2, 2);
+  init_exp(&b, VNONRELOC, base);
+  fs->freereg = base + 1;
+
+  luaK_storevar(fs, &v, &b);
+  luaK_fixline(fs, line);
+}
+
+static void async_localfunc (LexState *ls) {
+  expdesc b;
+  FuncState *fs = ls->fs;
+  new_localvar(ls, str_checkname(ls));  /* new local variable */
+  adjustlocalvars(ls, 1);  /* enter its scope */
+  body(ls, &b, 0, ls->linenumber);  /* function created in next register */
+
+  /* Wrap b in async(b) */
+  expdesc async_f;
+  int base = fs->freereg;
+  singlevaraux(fs, luaS_new(ls->L, "async"), &async_f, 1);
+  if (async_f.k == VVOID) {
+      expdesc key;
+      singlevaraux(fs, ls->envn, &async_f, 1);
+      codestring(ls, &key, luaS_new(ls->L, "async"));
+      luaK_indexed(fs, &async_f, &key);
+  }
+  luaK_exp2nextreg(fs, &async_f);
+  luaK_exp2nextreg(fs, &b);
+  luaK_codeABC(fs, OP_CALL, base, 2, 2);
+  init_exp(&b, VNONRELOC, base);
+  fs->freereg = base + 1;
+
+  expdesc lvar;
+  init_exp(&lvar, VLOCAL, fs->nactvar - 1);
+  luaK_storevar(fs, &lvar, &b);
+  /* debug information will only see the variable after this point! */
+  getlocvar(fs, fs->nactvar - 1)->startpc = fs->pc;
+}
+
+
 static void ifstat (LexState *ls, int line) {
   /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END */
+  /* whenstat -> WHEN cond THEN block {CASE cond THEN block} [ELSE block] END */
   FuncState *fs = ls->fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
-  test_then_block(ls, &escapelist);  /* IF cond THEN block */
-  while (ls->t.token == TK_ELSEIF)
-    test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
+  int is_when = (ls->t.token == TK_WHEN);
+  test_then_block(ls, &escapelist);  /* IF/WHEN cond THEN block */
+  while (ls->t.token == TK_ELSEIF || (is_when && ls->t.token == TK_CASE))
+    test_then_block(ls, &escapelist);  /* ELSEIF/CASE cond THEN block */
   if (testnext(ls, TK_ELSE))
     block(ls);  /* 'else' part */
-  check_match(ls, TK_END, TK_IF, line);
+  check_match(ls, TK_END, is_when ? TK_WHEN : TK_IF, line);
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
 
@@ -2199,6 +2386,71 @@ static int funcname (LexState *ls, expdesc *v) {
 }
 
 
+static void asmstat (LexState *ls) {
+    luaX_next(ls);
+    checknext(ls, '(');
+    while (ls->t.token != ')' && ls->t.token != TK_EOS) {
+        if (ls->t.token == TK_NAME) {
+            const char *name = getstr(ls->t.seminfo.ts);
+            luaX_next(ls);
+            int op = -1;
+            for (int i = 0; i < NUM_OPCODES; i++) {
+                if (strcmp(name, luaP_opnames[i]) == 0) { op = i; break; }
+            }
+            if (op != -1) {
+                int a = 0, b = 0, c = 0;
+                if (ls->t.token == TK_INT) { a = (int)ls->t.seminfo.i; luaX_next(ls); }
+                if (ls->t.token == TK_INT) { b = (int)ls->t.seminfo.i; luaX_next(ls); }
+                if (ls->t.token == TK_INT) { c = (int)ls->t.seminfo.i; luaX_next(ls); }
+                luaK_codeABC(ls->fs, (OpCode)op, a, b, c);
+            }
+        } else luaX_next(ls);
+        testnext(ls, ';');
+    }
+    checknext(ls, ')');
+}
+
+
+static void enumstat (LexState *ls) {
+  /* enum Name { A, B, C } */
+  TString *name = str_checkname(ls);
+  FuncState *fs = ls->fs;
+  expdesc v, t;
+
+  singlevaraux(fs, name, &v, 1);
+  if (v.k == VVOID) {
+      expdesc key;
+      singlevaraux(fs, ls->envn, &v, 1);
+      codestring(ls, &key, name);
+      luaK_indexed(fs, &v, &key);
+  }
+
+  int base = fs->freereg;
+  luaK_codeABC(fs, OP_NEWTABLE, base, 0, 0);
+
+  checknext(ls, '{');
+  int i = 0;
+  while (ls->t.token != '}' && ls->t.token != TK_EOS) {
+      TString *ename = str_checkname(ls);
+      expdesc ev, ei;
+      init_exp(&ev, VNONRELOC, base);
+      expdesc ekey;
+      codestring(ls, &ekey, ename);
+      luaK_indexed(fs, &ev, &ekey);
+
+      init_exp(&ei, VKINT, 0); ei.u.ival = i++;
+      luaK_storevar(fs, &ev, &ei);
+
+      testnext(ls, ',');
+  }
+  checknext(ls, '}');
+
+  init_exp(&t, VNONRELOC, base);
+  luaK_storevar(fs, &v, &t);
+  fs->freereg = base;
+}
+
+
 static void classstat (LexState *ls, int line) {
   /* classstat -> CLASS name [EXTENDS base] [DO] {member} END */
   FuncState *fs = ls->fs;
@@ -2373,12 +2625,51 @@ static void statement (LexState *ls) {
       single_ifstat(ls, line);
       break;
     }
+    case TK_IF:
     case TK_WHEN: {  /* stat -> ifstat */
-      whenstat(ls, line);
+      ifstat(ls, line);
       break;
     }
-    case TK_IF: {  /* stat -> ifstat */
-      ifstat(ls, line);
+    case TK_TRY: {
+      trystat(ls, line);
+      break;
+    }
+    case TK_ASM: {
+      asmstat(ls);
+      break;
+    }
+    case TK_ENUM: {
+      luaX_next(ls);
+      enumstat(ls);
+      break;
+    }
+    case TK_NAMESPACE:
+    case TK_STRUCT: {
+      luaX_next(ls);
+      str_checkname(ls);
+      if (testnext(ls, '{')) {
+          int level = 1;
+          while (level > 0 && ls->t.token != TK_EOS) {
+              if (ls->t.token == '{') level++;
+              else if (ls->t.token == '}') level--;
+              luaX_next(ls);
+          }
+      }
+      break;
+    }
+    case TK_USING: {
+        luaX_next(ls);
+        while (ls->t.token != ';' && ls->t.token != TK_EOS) luaX_next(ls);
+        testnext(ls, ';');
+        break;
+    }
+    case TK_ASYNC: {
+      luaX_next(ls);
+      if (testnext(ls, TK_LOCAL)) {
+          async_localfunc(ls);
+      } else {
+          async_funcstat(ls, line);
+      }
       break;
     }
     case TK_SWITCH: {  /* stat -> switchstat */

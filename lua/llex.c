@@ -42,6 +42,8 @@ static const char *const luaX_tokens [] = {
     "end", "false", "for", "function", "goto", "if",
     "in", "lambda", "local", "nil", "not", "or", "repeat",
     "return", "switch", "then", "true", "until", "when", "while",
+    "try", "catch", "finally", "async", "await", "namespace", "using",
+    "struct", "enum", "ASM",
     "class", "extends", "implements", "public", "private", "protected",
     "static", "new", "super",
     "LuaVMP",
@@ -736,6 +738,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
               seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->buff), luaZ_bufflen(ls->buff));
               return TK_STRING;
             } else if (ls->current == '[') {
+              luaZ_resetbuffer(ls->buff);
               int sep = skip_sep(ls);
               if (sep >= 0) {
                 read_long_string(ls, seminfo, sep);

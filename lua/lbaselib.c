@@ -297,6 +297,40 @@ static int luaB_vmprotect (lua_State *L) {
   return 1;
 }
 
+static int async_runner (lua_State *L) {
+    lua_State *co = lua_tothread(L, lua_upvalueindex(1));
+    int narg = lua_gettop(L);
+    int status;
+    int nres;
+
+    if (lua_status(co) == LUA_OK && lua_gettop(co) == 0) {
+        lua_pushvalue(L, lua_upvalueindex(2));
+        lua_xmove(L, co, 1);
+    }
+
+    lua_checkstack(co, narg);
+    for (int i = 1; i <= narg; i++) lua_pushvalue(L, i);
+    lua_xmove(L, co, narg);
+
+    status = lua_resume(co, L, narg);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        nres = lua_gettop(co);
+        lua_xmove(co, L, nres);
+        return nres;
+    } else {
+        lua_xmove(co, L, 1);
+        return lua_error(L);
+    }
+}
+
+static int luaB_async (lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+    lua_State *co = lua_newthread(L);
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(L, async_runner, 2);
+    return 1;
+}
+
 static int luaB_next (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
@@ -743,6 +777,7 @@ static const luaL_Reg base_funcs[] = {
 #if defined(LUA_COMPAT_LOADSTRING)
   {"loadstring", luaB_loadstring},
 #endif
+  {"async", luaB_async},
   {"newclass", luaB_newclass},
   {"newinstance", luaB_newinstance},
   {"next", luaB_next},
