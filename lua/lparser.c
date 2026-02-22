@@ -1394,6 +1394,7 @@ static BinOpr getbinopr (int op) {
     case '<': return OPR_LT;
     case TK_LE: return OPR_LE;
     case '>': return OPR_GT;
+    case TK_GE: return OPR_GE;
     case TK_AND: return OPR_AND;
     case TK_OR: return OPR_OR;
     case TK_COALESCE: return OPR_COALESCE;
