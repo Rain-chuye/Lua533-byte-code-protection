@@ -735,38 +735,10 @@ void luaV_finishOp (lua_State *L) {
 #define RB(i)	check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgR, ci->u.l.base+GETARG_B(i))
 #define RC(i)	check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgR, ci->u.l.base+GETARG_C(i))
 
-static void decrypt_tv(lua_State *L, TValue *o, Proto *p) {
-  if (ttisinteger(o)) {
-    o->value_.i = DECRYPT_INT(o->value_.i);
-  } else if (ttisstring(o) && p->string_seed) {
-    TString *ts = tsvalue(o);
-    size_t len = tsslen(ts);
-    const char *src = getstr(ts);
-    char *buf = (char *)malloc(len + 1);
-    for (size_t j = 0; j < len; j++) {
-        buf[j] = src[j] ^ (char)((p->string_seed >> ((j % 4) * 8)) & 0xFF);
-    }
-    buf[len] = '\0';
-    TString *nts = luaS_newlstr(L, buf, len);
-    free(buf);
-    setsvalue(L, o, nts);
-  }
-}
-
-static const TValue *get_rk_ptr(lua_State *L, TValue *k, int arg, TValue *tmp, Proto *p) {
-  const TValue *c = &k[INDEXK(arg)];
-  if (p->obfuscated) {
-    setobj(L, tmp, c);
-    decrypt_tv(L, tmp, p);
-    return tmp;
-  }
-  return c;
-}
-
 #define RKB(i)	check_exp(getBMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
-	ISK(GETARG_B(i)) ? get_rk_ptr(L, k, GETARG_B(i), &L->k_tmp[0], cl->p) : ci->u.l.base+GETARG_B(i))
+	ISK(GETARG_B(i)) ? k+INDEXK(GETARG_B(i)) : ci->u.l.base+GETARG_B(i))
 #define RKC(i)	check_exp(getCMode(GET_REAL_OPCODE(i, cl->p)) == OpArgK, \
-	ISK(GETARG_C(i)) ? get_rk_ptr(L, k, GETARG_C(i), &L->k_tmp[1], cl->p) : ci->u.l.base+GETARG_C(i))
+	ISK(GETARG_C(i)) ? k+INDEXK(GETARG_C(i)) : ci->u.l.base+GETARG_C(i))
 
 
 /* execute a jump instruction */
@@ -795,6 +767,9 @@ static const TValue *get_rk_ptr(lua_State *L, TValue *k, int arg, TValue *tmp, P
 /* fetch an instruction and prepare its execution */
 #define vmfetch()	{ \
   cl = clLvalue(ci->func); \
+  if (cl->p->obfuscated && !cl->p->decrypted) { \
+      decrypt_proto_constants(L, cl->p); \
+  } \
   k = cl->p->k; \
   base = ci->u.l.base; \
   __builtin_prefetch(ci->u.l.savedpc + 1, 0, 3); \
@@ -928,14 +903,7 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_LOADK) {
         TValue *rb = k + GETARG_Bx(i);
-        if (cl->p->obfuscated) {
-            setobj(L, &L->k_tmp[0], rb);
-            decrypt_tv(L, &L->k_tmp[0], cl->p);
-            base = ci->u.l.base; ra = RA(i);
-            setobj2s(L, ra, &L->k_tmp[0]);
-        } else {
-            setobj2s(L, ra, rb);
-        }
+        setobj2s(L, ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADKX) {
@@ -946,14 +914,7 @@ void luaV_execute (lua_State *L) {
         lua_assert(GET_REAL_OPCODE(next_i, cl->p) == OP_EXTRAARG);
         rb = k + GETARG_Ax(next_i);
         ci->u.l.savedpc++;
-        if (cl->p->obfuscated) {
-            setobj(L, &L->k_tmp[0], rb);
-            decrypt_tv(L, &L->k_tmp[0], cl->p);
-            base = ci->u.l.base; ra = RA(i);
-            setobj2s(L, ra, &L->k_tmp[0]);
-        } else {
-            setobj2s(L, ra, rb);
-        }
+        setobj2s(L, ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADBOOL) {
@@ -1722,9 +1683,8 @@ void luaV_execute (lua_State *L) {
           rc_val = RKC(i);
         } else {
           int b = GETARG_Bx(next_i);
-          rc_val = ISK(b) ? get_rk_ptr(L, k, b, &L->k_tmp[0], cl->p) : ci->u.l.base + b;
+          rc_val = ISK(b) ? k + INDEXK(b) : ci->u.l.base + b;
         }
-        base = ci->u.l.base; ra = RA(i);
         setobj2s(L, ra, rc_val);
         vmbreak;
       }
@@ -1755,7 +1715,7 @@ void luaV_execute (lua_State *L) {
         gettableProtected(L, rb, rkc, &L->k_tmp[0]);
         base = ci->u.l.base; ra = RA(i);
         TValue *v_res = &L->k_tmp[0];
-        TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(L, k, rd_idx, &L->k_tmp[1], cl->p) : ci->u.l.base + rd_idx;
+        TValue *rd_val = ISK(rd_idx) ? k + INDEXK(rd_idx) : ci->u.l.base + rd_idx;
         if (ttisnumber(v_res) && ttisnumber(rd_val)) {
           if (ttisinteger(v_res) && ttisinteger(rd_val)) {
             setivalue(ra, intop(-, ivalue(v_res), ivalue(rd_val)));
@@ -1779,7 +1739,7 @@ void luaV_execute (lua_State *L) {
         gettableProtected(L, rb, rkc, &L->k_tmp[0]);
         base = ci->u.l.base; ra = RA(i);
         TValue *v_res = &L->k_tmp[0];
-        TValue *rd_val = ISK(rd_idx) ? get_rk_ptr(L, k, rd_idx, &L->k_tmp[1], cl->p) : ci->u.l.base + rd_idx;
+        TValue *rd_val = ISK(rd_idx) ? k + INDEXK(rd_idx) : ci->u.l.base + rd_idx;
         if (ttisnumber(v_res) && ttisnumber(rd_val)) {
           if (ttisinteger(v_res) && ttisinteger(rd_val)) {
             setivalue(ra, intop(+, ivalue(v_res), ivalue(rd_val)));
@@ -1807,7 +1767,7 @@ void luaV_execute (lua_State *L) {
         /* Re-evaluate pointers as stack might have moved */
         tmp1 = base + cl->p->scratch_base + 2;
         tmp2 = tmp1 + 1;
-        gettableProtected(L, base + re, ISK(rf) ? get_rk_ptr(L, k, rf, tmp2 + 1, cl->p) : base + rf, tmp2);
+        gettableProtected(L, base + re, ISK(rf) ? k + INDEXK(rf) : base + rf, tmp2);
         ra = RA(i);
         tmp1 = base + cl->p->scratch_base + 2;
         tmp2 = tmp1 + 1;

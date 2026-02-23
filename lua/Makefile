@@ -35,7 +35,7 @@ CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
 LIB_O=	lauxlib.o lbaselib.o lbitlib.o lcorolib.o ldblib.o liolib.o \
 	lmathlib.o loslib.o lstrlib.o ltablib.o lutf8lib.o loadlib.o linit.o \
 	ljson.o lsha256.o lfs.o lvmprotect.o lhttp.o lprocess.o lthread.o lstruct.o \
-	llogtable.o lptrlib.o
+	llogtable.o lptrlib.o lmissing.o
 BASE_O= $(CORE_O) $(LIB_O) $(MYOBJS)
 
 LUA_T=	lua

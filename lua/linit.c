@@ -63,6 +63,13 @@ static const luaL_Reg loadedlibs[] = {
   {"struct", luaopen_struct},
   {"logtable", luaopen_logtable},
   {"ptr", luaopen_ptr},
+  {"lptrlib", luaopen_ptr},
+  {"lclass", luaopen_lclass},
+  {"lboolib", luaopen_lboolib},
+  {"ludatalib", luaopen_ludatalib},
+  {"lsmgrlib", luaopen_lsmgrlib},
+  {"ltranslator", luaopen_ltranslator},
+  {"lvmlib", luaopen_lvmlib},
   {NULL, NULL}
 };
 

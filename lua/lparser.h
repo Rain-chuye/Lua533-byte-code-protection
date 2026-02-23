@@ -124,6 +124,8 @@ typedef struct FuncState {
   lu_byte nups;  /* number of upvalues */
   lu_byte freereg;  /* first free register */
   int needclose;
+  int is_try;
+  int is_defer;
 } FuncState;
 
 

@@ -482,6 +482,7 @@ end_string:
 
 static int llex (LexState *ls, SemInfo *seminfo) {
   luaZ_resetbuffer(ls->buff);
+  seminfo->ts = NULL;
   if (ls->interp_step > 0) {
     int step = ls->interp_step;
     switch (step) {

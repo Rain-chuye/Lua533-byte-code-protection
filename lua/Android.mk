@@ -54,7 +54,8 @@ LOCAL_SRC_FILES := \
 	lthread.c \
 	lstruct.c \
 	llogtable.c \
-	lptrlib.c
+	lptrlib.c \
+	lmissing.c
 #	lua.c \
 #	luac.c \
 

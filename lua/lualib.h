@@ -62,6 +62,12 @@ LUAMOD_API int (luaopen_thread) (lua_State *L);
 LUAMOD_API int (luaopen_struct) (lua_State *L);
 LUAMOD_API int (luaopen_logtable) (lua_State *L);
 LUAMOD_API int (luaopen_ptr) (lua_State *L);
+LUAMOD_API int (luaopen_lclass) (lua_State *L);
+LUAMOD_API int (luaopen_lboolib) (lua_State *L);
+LUAMOD_API int (luaopen_ludatalib) (lua_State *L);
+LUAMOD_API int (luaopen_lsmgrlib) (lua_State *L);
+LUAMOD_API int (luaopen_ltranslator) (lua_State *L);
+LUAMOD_API int (luaopen_lvmlib) (lua_State *L);
 
 
 /* open all previous libraries */

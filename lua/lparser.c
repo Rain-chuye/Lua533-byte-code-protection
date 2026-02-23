@@ -159,9 +159,11 @@ static void check_match (LexState *ls, int what, int who, int where) {
 }
 
 
+#define is_reserved_name(t) ((t) >= TK_TRY && (t) <= TK_LUAVMP)
+
 static TString *str_checkname (LexState *ls) {
   TString *ts;
-  if (ls->t.token != TK_NAME && (ls->t.token < TK_CLASS || ls->t.token >= TK_EOS))
+  if (ls->t.token != TK_NAME && !is_reserved_name(ls->t.token))
     error_expected(ls, TK_NAME);
   ts = ls->t.seminfo.ts;
   luaX_next(ls);
@@ -577,6 +579,8 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->nactvar = 0;
   fs->needclose = 0;
   fs->firstlocal = ls->dyd->actvar.n;
+  fs->is_try = 0;
+  fs->is_defer = 0;
   fs->bl = NULL;
   f = fs->f;
   f->source = ls->source;
@@ -590,7 +594,14 @@ static void close_func (LexState *ls) {
   lua_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
-  luaK_ret(fs, 0, 0);  /* final return */
+  if (fs->is_try) {
+    /* Normal exit: return false */
+    luaK_codek(fs, fs->freereg, luaK_intK(fs, 0));
+    luaK_reserveregs(fs, 1);
+    luaK_ret(fs, fs->nactvar, 1);
+  } else {
+    luaK_ret(fs, 0, 0);  /* final return */
+  }
   leaveblock(fs);
   luaM_reallocvector(L, f->code, f->sizecode, fs->pc, Instruction);
   f->sizecode = fs->pc;
@@ -720,7 +731,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
     init_exp(&key, VKINT, 0);
     key.u.ival = ls->t.seminfo.i;
     luaX_next(ls);
-  } else if (ls->t.token == TK_NAME) {
+  } else if (ls->t.token == TK_NAME || is_reserved_name(ls->t.token)) {
     checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
     checkname(ls, &key);
   }
@@ -800,7 +811,14 @@ static void field (LexState *ls, struct ConsControl *cc) {
         recfield(ls, cc);
       break;
     }
-    case TK_NAME: {  /* may be 'listfield' or 'recfield' */
+    case TK_NAME:
+    case TK_TRY: case TK_CATCH: case TK_FINALLY:
+    case TK_NAMESPACE: case TK_USING:
+    case TK_STRUCT: case TK_ENUM: case TK_ASM:
+    case TK_CLASS: case TK_EXTENDS: case TK_IMPLEMENTS:
+    case TK_PUBLIC: case TK_PRIVATE: case TK_PROTECTED:
+    case TK_STATIC:
+    case TK_ASYNC: case TK_AWAIT: {  /* may be 'listfield' or 'recfield' */
       if (luaX_lookahead(ls) != '=')  /* expression? */
         listfield(ls, cc);
       else
@@ -881,7 +899,14 @@ static void parlist (LexState *ls) {
   if (ls->t.token != ')') {  /* is 'parlist' not empty? */
     do {
       switch (ls->t.token) {
-        case TK_NAME: {  /* param -> NAME */
+    case TK_NAME:
+    case TK_TRY: case TK_CATCH: case TK_FINALLY:
+    case TK_NAMESPACE: case TK_USING:
+    case TK_STRUCT: case TK_ENUM: case TK_ASM:
+    case TK_CLASS: case TK_EXTENDS: case TK_IMPLEMENTS:
+    case TK_PUBLIC: case TK_PRIVATE: case TK_PROTECTED:
+    case TK_STATIC:
+    case TK_ASYNC: case TK_AWAIT: {  /* param -> NAME */
           new_localvar(ls, str_checkname(ls));
           nparams++;
           break;
@@ -945,10 +970,17 @@ static void lambda_parlist(LexState *ls) {
     Proto *f = fs->f;
     int nparams = 0;
     f->is_vararg = 0;
-    if (ls->t.token == TK_NAME || ls->t.token == TK_DOTS) {
+    if (ls->t.token == TK_NAME || is_reserved_name(ls->t.token) || ls->t.token == TK_DOTS) {
         do {
             switch (ls->t.token) {
-                case TK_NAME: {  /* param -> NAME */
+                case TK_NAME:
+                case TK_TRY: case TK_CATCH: case TK_FINALLY:
+                case TK_NAMESPACE: case TK_USING:
+                case TK_STRUCT: case TK_ENUM: case TK_ASM:
+                case TK_CLASS: case TK_EXTENDS: case TK_IMPLEMENTS:
+                case TK_PUBLIC: case TK_PRIVATE: case TK_PROTECTED:
+                case TK_STATIC:
+                case TK_ASYNC: case TK_AWAIT: {  /* param -> NAME */
                     new_localvar(ls, str_checkname(ls));
                     nparams++;
                     break;
@@ -1077,7 +1109,20 @@ static void primaryexp (LexState *ls, expdesc *v) {
       singlevar(ls, v);
       return;
     }
+    case TK_TRY: case TK_CATCH: case TK_FINALLY:
+    case TK_NAMESPACE: case TK_USING:
+    case TK_STRUCT: case TK_ENUM: case TK_ASM:
+    case TK_CLASS: case TK_EXTENDS: case TK_IMPLEMENTS:
+    case TK_PUBLIC: case TK_PRIVATE: case TK_PROTECTED:
+    case TK_STATIC: {
+      singlevar(ls, v);
+      return;
+    }
     case TK_ASYNC: {
+        if (luaX_lookahead(ls) != TK_FUNCTION) {
+            singlevar(ls, v);
+            return;
+        }
         luaX_next(ls);
         checknext(ls, TK_FUNCTION);
         expdesc b;
@@ -1331,7 +1376,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
-      if (ls->t.token == TK_NAME && luaX_lookahead(ls) == TK_MEAN) {
+      if ((ls->t.token == TK_NAME || is_reserved_name(ls->t.token)) && luaX_lookahead(ls) == TK_MEAN) {
         int line = ls->linenumber;
         TString *argname = str_checkname(ls);
         luaX_next(ls); /* skip => */
@@ -1999,6 +2044,7 @@ static void trystat (LexState *ls, int line) {
       new_fs.f = addprototype(ls);
       new_fs.f->linedefined = line;
       open_func(ls, &new_fs, &bl_try);
+      new_fs.is_try = 1;
       statlist(ls);
       new_fs.f->lastlinedefined = ls->linenumber;
       codeclosure(ls, &try_closure);
@@ -2006,18 +2052,26 @@ static void trystat (LexState *ls, int line) {
   }
   luaK_exp2nextreg(fs, &try_closure);
 
-  /* Call pcall(try_closure) -> returns 2 values */
-  init_exp(&pcall_call, VCALL, luaK_codeABC(fs, OP_CALL, base, 2, 3));
-  luaK_setreturns(fs, &pcall_call, 2);
-  // Now ok is at base, err is at base + 1
-  fs->freereg = base + 2;
+  /* Call pcall(try_closure) -> returns MULTRET */
+  init_exp(&pcall_call, VCALL, luaK_codeABC(fs, OP_CALL, base, 2, 0));
+  luaK_setreturns(fs, &pcall_call, LUA_MULTRET);
+  // Now ok is at base, was_ret at base + 1, results at base + 2
+
+  /* Check was_ret */
+  int jf_not_ret = NO_JUMP;
+  luaK_codeABC(fs, OP_TEST, base, 0, 0); // Check ok
+  int jf_not_ok = luaK_jump(fs);
+  luaK_codeABC(fs, OP_TEST, base + 1, 0, 0); // Check was_ret
+  jf_not_ret = luaK_jump(fs);
+
+  /* If we are here, it was a return. Emit return base + 2... */
+  luaK_ret(fs, base + 2, LUA_MULTRET);
+
+  luaK_patchtohere(fs, jf_not_ret);
 
   if (ls->t.token == TK_CATCH) {
       luaX_next(ls); /* skip CATCH */
-      init_exp(&ok_var, VNONRELOC, base);
-      luaK_goiftrue(fs, &ok_var);
-      jf_ok = luaK_jump(fs); /* skip catch if ok is true */
-      luaK_patchtohere(fs, ok_var.f);
+      luaK_patchtohere(fs, jf_not_ok);
 
       enterblock(fs, &bl, 0);
       if (testnext(ls, '(')) {
@@ -2393,7 +2447,7 @@ static void asmstat (LexState *ls) {
     luaX_next(ls);
     checknext(ls, '(');
     while (ls->t.token != ')' && ls->t.token != TK_EOS) {
-        if (ls->t.token == TK_NAME) {
+        if (ls->t.token == TK_NAME || is_reserved_name(ls->t.token)) {
             const char *name = getstr(ls->t.seminfo.ts);
             luaX_next(ls);
             int op = -1;
@@ -2518,9 +2572,9 @@ static void classstat (LexState *ls, int line) {
     }
     if (!is_static) is_static = testnext(ls, TK_STATIC);
 
-    if (ls->t.token == TK_NAME || ls->t.token == TK_FUNCTION) {
+    if (ls->t.token == TK_NAME || is_reserved_name(ls->t.token) || ls->t.token == TK_FUNCTION) {
       TString *mname = ls->t.seminfo.ts;
-      int is_constructor = eqstr(mname, classname);
+      int is_constructor = mname ? eqstr(mname, classname) : 0;
       if (testnext(ls, TK_FUNCTION)) {
         mname = str_checkname(ls);
       } else {
@@ -2588,10 +2642,24 @@ static void retstat (LexState *ls) {
   FuncState *fs = ls->fs;
   expdesc e;
   int first, nret;  /* registers with returned values */
-  if (block_follow(ls, 1) || ls->t.token == ';')
-    first = nret = 0;  /* return no values */
+
+  if (fs->is_try) {
+    /* Inside try: return true, ...results */
+    luaK_codek(fs, fs->freereg, luaK_intK(fs, 1));
+    luaK_reserveregs(fs, 1);
+  }
+
+  if (block_follow(ls, 1) || ls->t.token == ';') {
+    if (fs->is_try) {
+        first = fs->nactvar;
+        nret = 1;
+    } else {
+        first = nret = 0;
+    }
+  }
   else {
     nret = explist(ls, &e);  /* optional return values */
+    if (fs->is_try) nret++;
     if (hasmultret(e.k)) {
       luaK_setmultret(fs, &e);
       if (e.k == VCALL && nret == 1) {  /* tail call? */

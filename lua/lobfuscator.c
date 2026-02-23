@@ -1,4 +1,6 @@
 #include "lobfuscator.h"
+#include "lfunc.h"
+#include "lgc.h"
 #include "lopcodes.h"
 #include "lfunc.h"
 #include "ldebug.h"
@@ -13,6 +15,34 @@
 
 static int seeded = 0;
 
+void decrypt_proto_constants(lua_State *L, Proto *f) {
+    if (f->decrypted) return;
+    f->decrypted = 1;
+    for (int i = 0; i < f->sizek; i++) {
+        TValue *o = &f->k[i];
+        if (ttisinteger(o)) {
+            o->value_.i = (lua_Integer)DECRYPT_INT(ivalue(o));
+        } else if (ttisfloat(o)) {
+            o->value_.n = decrypt_float_obf(fltvalue(o));
+        } else if (ttisstring(o)) {
+            TString *ts = tsvalue(o);
+            size_t len = tsslen(ts);
+            const char *src = getstr(ts);
+            char *buf = malloc(len + 1);
+            for (size_t j = 0; j < len; j++) {
+                buf[j] = src[j] ^ (char)((f->string_seed >> ((j % 4) * 8)) & 0xFF);
+            }
+            buf[len] = '\0';
+            TString *nts = luaS_newlstr(L, buf, len);
+            free(buf);
+            setsvalue(L, o, nts);
+        }
+    }
+    for (int i = 0; i < f->sizep; i++) {
+        decrypt_proto_constants(L, f->p[i]);
+    }
+}
+
 void lua_security_check(void) {
     /* Anti-debugging removed to prevent crashes */
 }
@@ -21,12 +51,27 @@ void lua_start_security_thread(void) {
     /* Security thread disabled */
 }
 
-static void fuse_instructions_internal(Proto *f) {
+static void fuse_instructions_internal(lua_State *L, Proto *f) {
     if (f->sizecode < 2) return;
+
+    lu_byte *is_target = (lu_byte *)malloc(f->sizecode);
+    memset(is_target, 0, f->sizecode);
+    for (int i = 0; i < f->sizecode; i++) {
+        Instruction inst = f->code[i];
+        OpCode op = GET_OPCODE(inst);
+        if (op == OP_JMP || op == OP_FORLOOP || op == OP_FORPREP || op == OP_TFORLOOP) {
+            int target = i + 1 + GETARG_sBx(inst);
+            if (target >= 0 && target < f->sizecode) is_target[target] = 1;
+        }
+        if (op == OP_EQ || op == OP_LT || op == OP_LE || op == OP_TEST || op == OP_TESTSET || op == OP_TFORCALL) {
+            if (i + 1 < f->sizecode) is_target[i + 1] = 1;
+        }
+    }
 
     /* Pattern: FAST_DIST (x*x + y*y)^0.5 */
     if (f->sizecode >= 4) {
         for (int i = 0; i < f->sizecode - 3; i++) {
+            if (is_target[i+1] || is_target[i+2] || is_target[i+3]) continue;
             Instruction i1 = f->code[i];
             Instruction i2 = f->code[i+1];
             Instruction i3 = f->code[i+2];
@@ -48,6 +93,7 @@ static void fuse_instructions_internal(Proto *f) {
     }
 
     for (int i = 0; i < f->sizecode - 1; i++) {
+        if (is_target[i+1]) continue;
         Instruction inst1 = f->code[i];
         Instruction inst2 = f->code[i+1];
         OpCode op1 = GET_OPCODE(inst1);
@@ -97,6 +143,7 @@ static void fuse_instructions_internal(Proto *f) {
     /* Pattern 5: t.k += val (Field Accumulation) */
     if (f->sizecode >= 3) {
         for (int i = 0; i < f->sizecode - 2; i++) {
+            if (is_target[i+1] || is_target[i+2]) continue;
             Instruction inst1 = f->code[i];
             Instruction inst2 = f->code[i+1];
             Instruction inst3 = f->code[i+2];
@@ -134,6 +181,7 @@ static void fuse_instructions_internal(Proto *f) {
     /* Pattern 4: PARTICLE_DIST (Corrected match with EXTRAARG) */
     if (f->sizecode >= 7) {
         for (int i = 0; i < f->sizecode - 6; i++) {
+            if (is_target[i+1] || is_target[i+2] || is_target[i+3] || is_target[i+4] || is_target[i+5] || is_target[i+6]) continue;
             Instruction i1 = f->code[i];
             Instruction i4 = f->code[i+3];
             Instruction i7 = f->code[i+6];
@@ -156,6 +204,7 @@ static void fuse_instructions_internal(Proto *f) {
             }
         }
     }
+    free(is_target);
 }
 
 static void inject_junk_internal(Proto *f) {
@@ -175,7 +224,7 @@ static void inject_junk_internal(Proto *f) {
 
 static void virtualize_proto_internal(lua_State *L, Proto *f) {
     if (f->sizecode == 0) return;
-    fuse_instructions_internal(f);
+    fuse_instructions_internal(L, f);
     inject_junk_internal(f);
     int old_sizecode = f->sizecode;
     if (old_sizecode <= 0) return;
