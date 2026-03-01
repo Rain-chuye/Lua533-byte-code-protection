@@ -1,0 +1,4 @@
+lua533_src/lua/*.o
+lua533_src/lua/lua
+lua533_src/lua/luac
+lua533_src/lua/liblua.a
