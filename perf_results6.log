@@ -1,0 +1,4 @@
+./lua/lua: ?:-1: 尝试对 number 值执行 调用 (局部变量)
+stack traceback:
+	?: in main chunk
+	[C]: in ?
