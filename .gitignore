@@ -1,0 +1,7 @@
+*.o
+*.a
+lua/lua
+lua/luac
+*.log
+*.tmp
+tests/test_output*

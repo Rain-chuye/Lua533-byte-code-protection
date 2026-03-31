@@ -1,0 +1,6 @@
+In file included from lua.h:16,
+                 from lbaselib.c:18:
+luaconf.h:297: warning: "LUA_COMPAT_5_2" redefined
+  297 | #define LUA_COMPAT_5_2
+      |
+<command-line>: note: this is the location of the previous definition
