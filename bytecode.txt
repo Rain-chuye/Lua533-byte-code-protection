@@ -1,0 +1,65 @@
+
+main <../../test_user.lua:0,0> (24 instructions at 0x56245fc98e30)
+0+ params, 11 slots, 1 upvalue, 7 locals, 11 constants, 3 functions
+	1	[1]	GETUPVAL 	0 0	; _ENV
+	2	[1]	NEWTABLE 	1 0 1
+	3	[1]	CLOSURE  	2 0	; 0x56245fc99110
+	4	[1]	SETTABLE 	1 -1 2	; "bindClass" -
+	5	[2]	NEWTABLE 	2 0 1
+	6	[2]	NEWTABLE 	3 0 1
+	7	[2]	NEWTABLE 	4 0 2
+	8	[2]	SETTABLE 	4 -4 -5	; "Theme_Material" "M"
+	9	[2]	SETTABLE 	4 -6 -7	; "Theme_Material_Light" "ML"
+	10	[2]	SETTABLE 	3 -3 4	; "style" -
+	11	[2]	SETTABLE 	2 -2 3	; "R" -
+	12	[3]	NEWTABLE 	3 0 1
+	13	[3]	CLOSURE  	4 1	; 0x56245fc99050
+	14	[3]	SETTABLE 	3 -8 4	; "date" -
+	15	[4]	NEWTABLE 	4 0 1
+	16	[4]	GETTABLE 	5 0 -10	; "print"
+	17	[4]	SETTABLE 	4 -9 5	; "setTheme" -
+	18	[6]	LOADK    	5 -11	; -3703673481951287930
+	19	[18]	CLOSURE  	6 2	; 0x56245fc997a0
+	20	[19]	GETTABLE 	7 4 -9	; "setTheme"
+	21	[19]	MOVE     	8 6
+	22	[19]	CALL     	8 1 0
+	23	[19]	CALL     	7 0 1
+	24	[19]	RETURN   	0 1
+
+function <../../test_user.lua:1,1> (7 instructions at 0x56245fc99110)
+0 params, 5 slots, 1 upvalue, 1 local, 3 constants, 0 functions
+	1	[1]	GETUPVAL 	0 0	; _ENV
+	2	[1]	NEWTABLE 	1 0 1
+	3	[1]	NEWTABLE 	2 0 1
+	4	[1]	SETTABLE 	2 -2 -3	; "SDK_INT" -3703673481951287930
+	5	[1]	SETTABLE 	1 -1 2	; "VERSION" -
+	6	[1]	RETURN   	1 2
+	7	[1]	RETURN   	0 1
+
+function <../../test_user.lua:3,3> (4 instructions at 0x56245fc99050)
+0 params, 4 slots, 1 upvalue, 1 local, 1 constant, 0 functions
+	1	[3]	VIRTUAL  	-1
+	2	[3]	EXTRAARG 	-1	; "12"
+	3	[3]	RETURN   	1 2
+	4	[3]	RETURN   	0 1
+
+function <../../test_user.lua:7,18> (18 instructions at 0x56245fc997a0)
+0 params, 5 slots, 2 upvalues, 2 locals, 7 constants, 0 functions
+	1	[7]	VIRTUAL  	-1
+	2	[8]	EXTRAARG 	-1	; -3703673481951287894
+	3	[9]	EXTRAARG 	-1	; -3703673481951287894
+	4	[9]	LE       	0 -2 2	; -3703673481951287919 -
+	5	[9]	JMP      	0 10	; to 16
+	6	[10]	LE       	1 1 -3	; - -3703673481951287876
+	7	[10]	JMP      	0 2	; to 10
+	8	[10]	LE       	0 -4 1	; -3703673481951287924 -
+	9	[10]	JMP      	0 3	; to 13
+	10	[11]	LOADK    	2 -5	; "M"
+	11	[11]	RETURN   	2 2
+	12	[11]	JMP      	0 5	; to 18
+	13	[13]	LOADK    	2 -6	; "ML"
+	14	[13]	RETURN   	2 2
+	15	[14]	JMP      	0 2	; to 18
+	16	[16]	LOADK    	2 -7	; "H"
+	17	[16]	RETURN   	2 2
+	18	[18]	RETURN   	0 1
